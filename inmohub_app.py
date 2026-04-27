@@ -505,29 +505,31 @@ if menu == "Dashboard":
         )
         df_mapa["size"] = df_mapa["num_propietarios"].clip(10, 50)
 
-        fig_map = go.Figure(go.Scattermapbox(
-            lat=df_mapa["lat"], lon=df_mapa["lon"],
-            mode="markers+text",
-            marker=dict(
-                size=df_mapa["size"],
-                color=df_mapa["color_val"],
-                colorscale=[[0,"#00C9A7"],[0.45,"#FFB347"],[1,"#FF4B4B"]],
-                cmin=0, cmax=25,
-                opacity=0.85,
-                colorbar=dict(
-                    title="Brecha %",
-                    thickness=12,
-                    bgcolor="rgba(13,27,42,0.8)",
-                    tickfont=dict(color=TEXT2, size=10),
-                    titlefont=dict(color=TEXT2, size=10),
-                )
-            ),
-            text=df_mapa["cp"],
-            textfont=dict(color="white", size=9),
-            textposition="middle center",
-            hovertext=df_mapa["label"],
-            hoverinfo="text",
-        ))
+        # Color por brecha — calculado manualmente para evitar bug colorbar Plotly
+        def color_brecha(b):
+            if b > 20: return "#FF4B4B"
+            elif b > 10: return "#FFB347"
+            else: return "#00C9A7"
+
+        df_mapa["color_hex"] = df_mapa["brecha_pct_media"].apply(color_brecha)
+
+        fig_map = go.Figure()
+        # Añadir un trace por color para la leyenda
+        for color, label in [("#FF4B4B","Brecha >20%"),("#FFB347","Brecha 10-20%"),("#00C9A7","Brecha <10%")]:
+            mask = df_mapa["color_hex"] == color
+            if mask.any():
+                sub = df_mapa[mask]
+                fig_map.add_trace(go.Scattermapbox(
+                    lat=sub["lat"], lon=sub["lon"],
+                    mode="markers+text",
+                    name=label,
+                    marker=dict(size=sub["size"], color=color, opacity=0.85),
+                    text=sub["cp"],
+                    textfont=dict(color="white", size=9),
+                    textposition="middle center",
+                    hovertext=sub["label"],
+                    hoverinfo="text",
+                ))
         fig_map.update_layout(
             mapbox=dict(
                 style="carto-darkmatter",
@@ -538,6 +540,13 @@ if menu == "Dashboard":
             height=340,
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
+            legend=dict(
+                font=dict(color=TEXT2, size=10),
+                bgcolor="rgba(13,27,42,0.8)",
+                bordercolor=BORDER,
+                x=0.01, y=0.99,
+            ),
+            showlegend=True,
         )
         # Leyenda manual
         st.markdown(f"""
