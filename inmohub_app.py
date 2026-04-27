@@ -103,24 +103,34 @@ html, body, [class*="css"] {{
     color: {ACCENT} !important;
     border-left: 3px solid {ACCENT} !important;
 }}
-.stButton>button {{
+.stButton>button {
     background: #1E3A5A !important;
-    border: 1px solid #3A6080 !important;
+    border: 1px solid #4A7FA5 !important;
     color: #FFFFFF !important;
     font-family: 'Space Grotesk', sans-serif !important;
     border-radius: 8px !important;
     font-weight: 500 !important;
-}}
-.stButton>button:hover {{
-    border-color: {ACCENT} !important;
-    color: {ACCENT} !important;
+}
+.stButton>button:hover {
+    border-color: #00C9A7 !important;
+    color: #00C9A7 !important;
     background: #1E4A6A !important;
-}}
-[data-testid="stSidebar"] .stButton>button {{
+}
+[data-testid="stSidebar"] .stButton>button {
     background: transparent !important;
     border: none !important;
-}}
-.stTextInput>div>div>input, .stSelectbox>div>div>div {{
+    color: #8899AA !important;
+}
+button[kind="primary"] {
+    background: #00C9A7 !important;
+    color: #0D1B2A !important;
+    border: none !important;
+    font-weight: 700 !important;
+}
+button[kind="primary"]:hover {
+    background: #00A88A !important;
+}
+.stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextInput>div>div {{
     background: #1E3A5A !important;
     color: #FFFFFF !important;
     border: 1px solid #4A7FA5 !important;
@@ -129,10 +139,11 @@ html, body, [class*="css"] {{
 .stTextInput>div>div>input::placeholder {{
     color: #8899AA !important;
 }}
-label, .stTextInput label, .stSelectbox label {{
+label, p, .stTextInput label, .stSelectbox label, [data-testid="stWidgetLabel"] {{
     color: #CCDDEE !important;
     font-size: 0.88rem !important;
 }}
+.stTextInput {{ margin-bottom: 0.5rem; }}
 [data-testid="stMetricValue"] {{ color: {ACCENT} !important; font-family: 'Space Grotesk', sans-serif !important; }}
 [data-testid="stMetricLabel"] {{ color: {TEXT2} !important; }}
 .stDataFrame {{ background: {CARD} !important; }}
@@ -142,6 +153,16 @@ hr {{ border-color: {BORDER} !important; opacity: 0.3; }}
 .stTabs [data-baseweb="tab-list"] {{ background: {CARD} !important; border-radius: 8px; gap: 4px; padding: 4px; }}
 .stTabs [data-baseweb="tab"] {{ background: transparent !important; color: {TEXT2} !important; border-radius: 6px !important; }}
 .stTabs [aria-selected="true"] {{ background: {ACCENT} !important; color: {BG} !important; font-weight: 600 !important; }}
+
+div[data-baseweb="select"] > div {
+    background: #1E3A5A !important;
+    border: 1px solid #4A7FA5 !important;
+    color: #FFFFFF !important;
+}
+div[data-baseweb="select"] span {
+    color: #FFFFFF !important;
+}
+.stSlider [data-testid="stThumb"] { background: #00C9A7 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -554,7 +575,7 @@ if menu == "Dashboard":
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
             legend=dict(
-                font=dict(color=TEXT2, size=10),
+                font=dict(size=10),
                 bgcolor="rgba(13,27,42,0.8)",
                 bordercolor=BORDER,
                 x=0.01, y=0.99,
@@ -667,9 +688,9 @@ if menu == "Dashboard":
     fig_evo.update_layout(
         height=220, margin=dict(l=0, r=0, t=10, b=0),
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-        legend=dict(font=dict(color=TEXT2, size=11), bgcolor="rgba(0,0,0,0)"),
-        xaxis=dict(gridcolor=BORDER, color=TEXT2, tickfont=dict(size=11)),
-        yaxis=dict(gridcolor=BORDER, color=TEXT2, tickfont=dict(size=10)),
+        legend=dict(font=dict(size=11), bgcolor="rgba(0,0,0,0)"),
+        xaxis=dict(gridcolor=BORDER, tickfont=dict(size=11)),
+        yaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
     )
     st.plotly_chart(fig_evo, use_container_width=True, config={"displayModeBar": False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -760,11 +781,11 @@ elif menu == "Radar de Mercado":
             textposition="outside", textfont=dict(color=TEXT, size=10),
         ))
         fig_brecha.update_layout(
-            title=dict(text="Brecha % por CP", font=dict(color=TEXT2, size=12)),
+            title=dict(text="Brecha % por CP", font=dict(size=12)),
             height=280, margin=dict(l=0,r=0,t=30,b=0),
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(gridcolor=BORDER, color=TEXT2, tickfont=dict(size=10)),
-            yaxis=dict(gridcolor=BORDER, color=TEXT2, tickfont=dict(size=10)),
+            xaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
+            yaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
         )
         st.plotly_chart(fig_brecha, use_container_width=True, config={"displayModeBar": False})
 
@@ -776,11 +797,11 @@ elif menu == "Radar de Mercado":
             textposition="outside", textfont=dict(color=TEXT, size=9),
         ))
         fig_lucro.update_layout(
-            title=dict(text="Lucro Cesante Total €/mes por CP", font=dict(color=TEXT2, size=12)),
+            title=dict(text="Lucro Cesante Total €/mes por CP", font=dict(size=12)),
             height=280, margin=dict(l=0,r=0,t=30,b=0),
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(gridcolor=BORDER, color=TEXT2, tickfont=dict(size=10)),
-            yaxis=dict(gridcolor=BORDER, color=TEXT2, tickfont=dict(size=10)),
+            xaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
+            yaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
         )
         st.plotly_chart(fig_lucro, use_container_width=True, config={"displayModeBar": False})
 
@@ -1067,8 +1088,8 @@ elif menu == "AI Advisory":
     fig_score.update_layout(
         height=180, margin=dict(l=0,r=0,t=0,b=0),
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(gridcolor=BORDER, color=TEXT2, title="Score %", titlefont=dict(color=TEXT2, size=10)),
-        yaxis=dict(gridcolor=BORDER, color=TEXT2),
+        xaxis=dict(gridcolor=BORDER, title="Score %", titlefont=dict(size=10)),
+        yaxis=dict(gridcolor=BORDER),
     )
     st.plotly_chart(fig_score, use_container_width=True, config={"displayModeBar": False})
     st.markdown("</div>", unsafe_allow_html=True)
