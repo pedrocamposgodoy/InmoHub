@@ -69,7 +69,7 @@ TEXT      = "#FFFFFF"
 TEXT2     = "#8899AA"
 BORDER    = "#2A3F55"
 
-st.markdown(f"""
+CSS = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
@@ -103,47 +103,48 @@ html, body, [class*="css"] {{
     color: {ACCENT} !important;
     border-left: 3px solid {ACCENT} !important;
 }}
-.stButton>button {
+.stButton>button {{
     background: #1E3A5A !important;
     border: 1px solid #4A7FA5 !important;
     color: #FFFFFF !important;
     font-family: 'Space Grotesk', sans-serif !important;
     border-radius: 8px !important;
     font-weight: 500 !important;
-}
-.stButton>button:hover {
-    border-color: #00C9A7 !important;
-    color: #00C9A7 !important;
+}}
+.stButton>button:hover {{
+    border-color: {ACCENT} !important;
+    color: {ACCENT} !important;
     background: #1E4A6A !important;
-}
-[data-testid="stSidebar"] .stButton>button {
-    background: transparent !important;
-    border: none !important;
-    color: #8899AA !important;
-}
-button[kind="primary"] {
-    background: #00C9A7 !important;
-    color: #0D1B2A !important;
+}}
+button[kind="primary"] {{
+    background: {ACCENT} !important;
+    color: {BG} !important;
     border: none !important;
     font-weight: 700 !important;
-}
-button[kind="primary"]:hover {
+}}
+button[kind="primary"]:hover {{
     background: #00A88A !important;
-}
-.stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextInput>div>div {{
+}}
+.stTextInput>div>div>input, .stTextInput>div>div {{
     background: #1E3A5A !important;
     color: #FFFFFF !important;
     border: 1px solid #4A7FA5 !important;
     border-radius: 8px !important;
 }}
 .stTextInput>div>div>input::placeholder {{
-    color: #8899AA !important;
+    color: {TEXT2} !important;
 }}
-label, p, .stTextInput label, .stSelectbox label, [data-testid="stWidgetLabel"] {{
+label, .stTextInput label, .stSelectbox label, [data-testid="stWidgetLabel"] p {{
     color: #CCDDEE !important;
     font-size: 0.88rem !important;
 }}
 .stTextInput {{ margin-bottom: 0.5rem; }}
+div[data-baseweb="select"] > div {{
+    background: #1E3A5A !important;
+    border: 1px solid #4A7FA5 !important;
+    color: #FFFFFF !important;
+}}
+div[data-baseweb="select"] span {{ color: #FFFFFF !important; }}
 [data-testid="stMetricValue"] {{ color: {ACCENT} !important; font-family: 'Space Grotesk', sans-serif !important; }}
 [data-testid="stMetricLabel"] {{ color: {TEXT2} !important; }}
 .stDataFrame {{ background: {CARD} !important; }}
@@ -153,18 +154,9 @@ hr {{ border-color: {BORDER} !important; opacity: 0.3; }}
 .stTabs [data-baseweb="tab-list"] {{ background: {CARD} !important; border-radius: 8px; gap: 4px; padding: 4px; }}
 .stTabs [data-baseweb="tab"] {{ background: transparent !important; color: {TEXT2} !important; border-radius: 6px !important; }}
 .stTabs [aria-selected="true"] {{ background: {ACCENT} !important; color: {BG} !important; font-weight: 600 !important; }}
-
-div[data-baseweb="select"] > div {
-    background: #1E3A5A !important;
-    border: 1px solid #4A7FA5 !important;
-    color: #FFFFFF !important;
-}
-div[data-baseweb="select"] span {
-    color: #FFFFFF !important;
-}
-.stSlider [data-testid="stThumb"] { background: #00C9A7 !important; }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(CSS, unsafe_allow_html=True)
 
 # ================================================================
 # DATOS MOCK — cuando Supabase está vacío o para demo
