@@ -280,9 +280,62 @@ def cargar_zona_stats():
 
 @st.cache_data(ttl=60)
 def cargar_leads():
+    # Leer leads reales de Supabase con datos de inmobiliaria
     data = supabase_get("leads_inmobiliarias",
-                        "?exportado_inmohub=eq.true&order=created_at.desc")
-    return data if data else LEADS_MOCK
+                        "?order=created_at.desc&select=*,inmobiliarias(nombre)")
+    if data and isinstance(data, list) and len(data) > 0:
+        # Normalizar campos para compatibilidad con el resto del código
+        leads = []
+        for l in data:
+            leads.append({
+                "id":           f"LH-{str(l.get('id',''))[:6].upper()}",
+                "cp":           l.get("cp", "18001"),
+                "perfil":       _clasificar_perfil(l),
+                "ia_score":     _calcular_score(l),
+                "brecha_euros": float(l.get("rentabilidad_mercado", 0) or 0),
+                "motivo_texto": l.get("motivo_texto", ""),
+                "argumentario": l.get("argumentario", ""),
+                "estado":       l.get("estado", "nuevo"),
+                "precio_lead":  _calcular_precio(l),
+                "exportado_inmohub": l.get("exportado_inmohub", False),
+                "nombre":       l.get("nombre", "—"),
+                "email":        l.get("email", "—"),
+                "telefono":     l.get("telefono", "—"),
+                "inmobiliaria": l.get("inmobiliarias", {}).get("nombre", "—") if isinstance(l.get("inmobiliarias"), dict) else "—",
+                "_id_real":     l.get("id", ""),
+            })
+        return leads
+    return LEADS_MOCK
+
+def _clasificar_perfil(lead):
+    motivo = (lead.get("motivo_texto") or "").lower()
+    rent_act = float(lead.get("rentabilidad_actual") or 0)
+    rent_mer = float(lead.get("rentabilidad_mercado") or 0)
+    if "venc" in motivo or "contrato" in motivo:
+        return "CONTRATO VENCIENDO"
+    if "reforma" in motivo:
+        return "UPGRADE ESTÉTICO"
+    if rent_act > 0 and rent_mer > 0 and (rent_mer - rent_act) / max(rent_mer, 1) > 0.3:
+        return "INVERSOR EN ESTRÉS"
+    return "FATIGA DEL PROPIETARIO"
+
+def _calcular_score(lead):
+    score = 50
+    rent_act = float(lead.get("rentabilidad_actual") or 0)
+    rent_mer = float(lead.get("rentabilidad_mercado") or 0)
+    motivo = (lead.get("motivo_texto") or "").lower()
+    if rent_act > 0 and rent_mer > rent_act:
+        score += min(int((rent_mer - rent_act) / max(rent_mer, 1) * 100), 30)
+    if "venc" in motivo: score += 15
+    if "reforma" in motivo: score += 10
+    if "euribor" in motivo or "hipoteca" in motivo: score += 10
+    return min(score, 99)
+
+def _calcular_precio(lead):
+    score = _calcular_score(lead)
+    if score >= 80: return 55
+    if score >= 65: return 45
+    return 35
 
 zona_stats = cargar_zona_stats()
 leads_data  = cargar_leads()
@@ -293,6 +346,7 @@ leads_nuevos    = len([l for l in leads_data if l.get("estado") == "nuevo"])
 lucro_total     = sum(z.get("lucro_cesante_total", 0) for z in zona_stats)
 contratos_90d   = sum(z.get("contratos_vencen_90d", 0) for z in zona_stats)
 ia_scores_altos = len([l for l in leads_data if l.get("ia_score", 0) >= 75])
+es_datos_reales = leads_data != LEADS_MOCK
 
 # ================================================================
 # SIDEBAR
@@ -875,16 +929,19 @@ elif menu == "Lead Marketplace":
                 estado_actual = lead.get("estado","nuevo")
                 if estado_actual == "nuevo":
                     if st.button("📞 Marcar contactado", key=f"cont_{lid}", use_container_width=True):
-                        supabase_patch(f"leads_inmobiliarias?id=eq.{lid}", {"estado":"contactado"})
+                        id_real = lead.get("_id_real", lid)
+                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"contactado"})
                         st.cache_data.clear()
                         st.rerun()
                 elif estado_actual == "contactado":
                     if st.button("✅ Marcar cerrado", key=f"cerr_{lid}", use_container_width=True):
-                        supabase_patch(f"leads_inmobiliarias?id=eq.{lid}", {"estado":"cerrado"})
+                        id_real = lead.get("_id_real", lid)
+                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"cerrado"})
                         st.cache_data.clear()
                         st.rerun()
                     if st.button("↩️ Marcar nuevo", key=f"reset_{lid}", use_container_width=True):
-                        supabase_patch(f"leads_inmobiliarias?id=eq.{lid}", {"estado":"nuevo"})
+                        id_real = lead.get("_id_real", lid)
+                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
                         st.cache_data.clear()
                         st.rerun()
 
