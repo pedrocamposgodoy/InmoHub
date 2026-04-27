@@ -218,27 +218,43 @@ for k, v in [
 # LOGIN SCREEN
 # ================================================================
 if not st.session_state.inmo_logged:
-    col_l, col_c, col_r = st.columns([1, 1.4, 1])
+    # CSS específico para login
+    st.markdown(f"""
+    <style>
+    .stApp {{ background: linear-gradient(135deg, #0A1628 0%, #0D1B2A 50%, #091422 100%) !important; }}
+    </style>
+    """, unsafe_allow_html=True)
+
+    col_l, col_c, col_r = st.columns([1, 1.2, 1])
     with col_c:
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+
+        # Logo
         st.markdown(f"""
-        <div style='text-align:center;margin-bottom:2rem;'>
-            <div style='font-size:2.8rem;font-weight:700;color:{ACCENT};
-                font-family:"Space Grotesk",sans-serif;letter-spacing:-1px;'>
+        <div style='text-align:center;margin-bottom:2.5rem;'>
+            <div style='font-size:3rem;font-weight:700;color:{ACCENT};
+                font-family:"Space Grotesk",sans-serif;letter-spacing:-2px;'>
                 InmoHub
             </div>
-            <div style='font-size:0.75rem;letter-spacing:0.25em;text-transform:uppercase;
-                color:{TEXT2};margin-top:4px;'>B2B · Real Estate Intelligence · Granada</div>
+            <div style='font-size:0.72rem;letter-spacing:0.3em;text-transform:uppercase;
+                color:{TEXT2};margin-top:6px;'>B2B · Real Estate Intelligence · Granada</div>
         </div>
         """, unsafe_allow_html=True)
 
+        # Card contenedor — solo visual, sin meter inputs dentro del HTML
         st.markdown(f"""
-        <div style='background:#1A3050;border:1px solid #3A6080;border-radius:16px;
-            padding:2rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);'>
+        <div style='background:#132035;border:1px solid #1E3A5A;border-radius:16px;
+            padding:2rem 2rem 0.5rem;box-shadow:0 20px 60px rgba(0,0,0,0.5);'>
+            <div style='font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;
+                color:{TEXT2};margin-bottom:1.5rem;text-align:center;'>
+                Acceso para inmobiliarias
+            </div>
+        </div>
         """, unsafe_allow_html=True)
 
-        email = st.text_input("Email", placeholder="tu@inmobiliaria.com", key="login_email")
-        password = st.text_input("Contraseña", type="password", key="login_pass")
+        email    = st.text_input("Email", placeholder="tu@inmobiliaria.com", key="login_email", label_visibility="collapsed")
+        password = st.text_input("Contraseña", placeholder="Contraseña", type="password", key="login_pass", label_visibility="collapsed")
+        st.markdown("<br>", unsafe_allow_html=True)
 
         if st.button("Acceder al panel →", use_container_width=True, type="primary"):
             if email and password:
@@ -255,14 +271,12 @@ if not st.session_state.inmo_logged:
                 st.warning("Completa email y contraseña")
 
         st.markdown(f"""
-        <div style='text-align:center;margin-top:1.5rem;font-size:0.75rem;color:{TEXT2};'>
+        <div style='text-align:center;margin-top:1rem;font-size:0.72rem;color:{TEXT2};'>
             ¿No tienes cuenta? Contacta con Nolasco Capital
-        </div>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        # Demo rápida
         if st.button("🎯 Entrar en modo demo", use_container_width=True):
             st.session_state.inmo_logged = True
             st.session_state.inmo_email  = "demo@inmohub.es"
@@ -611,7 +625,7 @@ if menu == "Dashboard":
                 ))
         fig_map.update_layout(
             mapbox=dict(
-                style="carto-darkmatter",
+                style="carto-positron",
                 center=dict(lat=37.174, lon=-3.601),
                 zoom=12.5,
             ),
