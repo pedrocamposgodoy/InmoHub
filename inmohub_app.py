@@ -399,30 +399,12 @@ def lead_card(lead, preview=False):
     estado = lead.get("estado", "nuevo")
     score_color = RED if score >= 80 else (AMBER if score >= 60 else TEXT2)
     estado_color = ACCENT if estado == "nuevo" else (AMBER if estado == "contactado" else TEXT2)
-
-    contacto = ""
-    if not preview:
-        motivo = lead.get("motivo_texto", "")
-        arg = lead.get("argumentario", "")
-        nombre = lead.get("nombre", "—")
-        email  = lead.get("email", "—")
-        tel    = lead.get("telefono", "—")
-        contacto = f"""
-        <div style='margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid {BORDER};'>
-            <div style='font-size:0.72rem;color:{TEXT2};margin-bottom:4px;'>CONTACTO</div>
-            <div style='font-size:0.85rem;'>👤 {nombre} · 📧 {email} · 📞 {tel}</div>
-        </div>
-        <div style='margin-top:0.8rem;background:rgba(0,201,167,0.06);border-radius:8px;
-            padding:0.7rem;border-left:3px solid {ACCENT};'>
-            <div style='font-size:0.68rem;color:{ACCENT};text-transform:uppercase;
-                letter-spacing:0.1em;margin-bottom:4px;'>Argumentario IA</div>
-            <div style='font-size:0.82rem;color:{TEXT};font-style:italic;'>"{arg}"</div>
-        </div>"""
-
     lid = lead.get("id", f"LH-{random.randint(400,499)}")
-    return f"""
+
+    # Cabecera siempre visible
+    st.markdown(f"""
     <div style='background:{CARD};border:1px solid {BORDER};border-radius:12px;
-        padding:1.1rem 1.2rem;margin-bottom:0.8rem;transition:border-color 0.2s;'>
+        padding:1.1rem 1.2rem;margin-bottom:0.3rem;'>
         <div style='display:flex;justify-content:space-between;align-items:flex-start;'>
             <div>
                 <div style='font-size:0.72rem;color:{TEXT2};margin-bottom:4px;'>
@@ -430,26 +412,43 @@ def lead_card(lead, preview=False):
                     &nbsp;|&nbsp; CP <strong style='color:{BLUE};'>{cp}</strong>
                     &nbsp;|&nbsp; <span style='color:{estado_color};'>● {estado.upper()}</span>
                 </div>
-                <div style='font-size:0.95rem;font-weight:600;color:{TEXT};'>
-                    {perfil}
-                </div>
+                <div style='font-size:0.95rem;font-weight:600;color:{TEXT};'>{perfil}</div>
                 <div style='font-size:0.82rem;color:{TEXT2};margin-top:4px;'>
                     Brecha: <strong style='color:{RED};'>-{brecha:,.0f}€/mes</strong>
                 </div>
             </div>
             <div style='text-align:right;'>
-                <div style='font-size:1.3rem;font-weight:700;color:{score_color};'>
-                    {score}%
-                </div>
+                <div style='font-size:1.3rem;font-weight:700;color:{score_color};'>{score}%</div>
                 <div style='font-size:0.62rem;color:{TEXT2};'>IA Score</div>
                 <div style='margin-top:6px;background:{ACCENT};color:{BG};padding:4px 10px;
-                    border-radius:6px;font-size:0.75rem;font-weight:700;'>
-                    €{precio}
-                </div>
+                    border-radius:6px;font-size:0.75rem;font-weight:700;'>€{precio}</div>
             </div>
         </div>
-        {contacto}
-    </div>"""
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Datos de contacto y argumentario (solo en vista completa)
+    if not preview:
+        nombre = lead.get("nombre", "—")
+        email  = lead.get("email", "—")
+        tel    = lead.get("telefono", "—")
+        arg    = lead.get("argumentario", "Sin argumentario")
+        st.markdown(f"""
+        <div style='background:{CARD};border:1px solid {BORDER};border-top:none;
+            border-radius:0 0 12px 12px;padding:0.8rem 1.2rem;margin-bottom:0.8rem;'>
+            <div style='font-size:0.72rem;color:{TEXT2};margin-bottom:6px;
+                text-transform:uppercase;letter-spacing:0.08em;'>Contacto</div>
+            <div style='font-size:0.85rem;color:{TEXT};margin-bottom:0.8rem;'>
+                👤 {nombre} &nbsp;·&nbsp; 📧 {email} &nbsp;·&nbsp; 📞 {tel}
+            </div>
+            <div style='background:rgba(0,201,167,0.08);border-radius:8px;
+                padding:0.7rem;border-left:3px solid {ACCENT};'>
+                <div style='font-size:0.68rem;color:{ACCENT};text-transform:uppercase;
+                    letter-spacing:0.1em;margin-bottom:4px;'>Argumentario IA</div>
+                <div style='font-size:0.82rem;color:{TEXT};font-style:italic;'>{arg}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 def section_header(title, subtitle=""):
     st.markdown(f"""
@@ -594,7 +593,7 @@ if menu == "Dashboard":
             </div>
         """, unsafe_allow_html=True)
         for lead in leads_data[:3]:
-            st.markdown(lead_card(lead, preview=True), unsafe_allow_html=True)
+            lead_card(lead, preview=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_right:
@@ -681,9 +680,9 @@ if menu == "Dashboard":
         height=220, margin=dict(l=0, r=0, t=10, b=0),
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(font=dict(size=11), bgcolor="rgba(0,0,0,0)"),
-        xaxis=dict(gridcolor=BORDER, tickfont=dict(size=11)),
-        yaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
     )
+    fig_evo.update_xaxes(gridcolor="#2A3F55", tickfont=dict(size=10, color="#8899AA"))
+    fig_evo.update_yaxes(gridcolor="#2A3F55", tickfont=dict(size=10, color="#8899AA"))
     st.plotly_chart(fig_evo, use_container_width=True, config={"displayModeBar": False})
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -776,9 +775,9 @@ elif menu == "Radar de Mercado":
             title=dict(text="Brecha % por CP", font=dict(size=12)),
             height=280, margin=dict(l=0,r=0,t=30,b=0),
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
-            yaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
         )
+        fig_brecha.update_xaxes(gridcolor="#2A3F55", tickfont=dict(size=10, color="#8899AA"))
+        fig_brecha.update_yaxes(gridcolor="#2A3F55", tickfont=dict(size=10, color="#8899AA"))
         st.plotly_chart(fig_brecha, use_container_width=True, config={"displayModeBar": False})
 
     with col_g2:
@@ -792,9 +791,9 @@ elif menu == "Radar de Mercado":
             title=dict(text="Lucro Cesante Total €/mes por CP", font=dict(size=12)),
             height=280, margin=dict(l=0,r=0,t=30,b=0),
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
-            yaxis=dict(gridcolor=BORDER, tickfont=dict(size=10)),
         )
+        fig_lucro.update_xaxes(gridcolor="#2A3F55", tickfont=dict(size=10, color="#8899AA"))
+        fig_lucro.update_yaxes(gridcolor="#2A3F55", tickfont=dict(size=10, color="#8899AA"))
         st.plotly_chart(fig_lucro, use_container_width=True, config={"displayModeBar": False})
 
     # Radar de vencimientos
@@ -869,7 +868,7 @@ elif menu == "Lead Marketplace":
         for lead in leads_filtrados:
             col_card, col_actions = st.columns([4, 1])
             with col_card:
-                st.markdown(lead_card(lead, preview=False), unsafe_allow_html=True)
+                lead_card(lead, preview=False)
             with col_actions:
                 st.markdown("<br>", unsafe_allow_html=True)
                 lid = lead.get("id","")
@@ -1080,9 +1079,9 @@ elif menu == "AI Advisory":
     fig_score.update_layout(
         height=180, margin=dict(l=0,r=0,t=0,b=0),
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(gridcolor=BORDER, title="Score %", titlefont=dict(size=10)),
-        yaxis=dict(gridcolor=BORDER),
     )
+    fig_score.update_xaxes(gridcolor="#2A3F55", tickfont=dict(size=10, color="#8899AA"))
+    fig_score.update_yaxes(gridcolor="#2A3F55", tickfont=dict(size=10, color="#8899AA"))
     st.plotly_chart(fig_score, use_container_width=True, config={"displayModeBar": False})
     st.markdown("</div>", unsafe_allow_html=True)
 
