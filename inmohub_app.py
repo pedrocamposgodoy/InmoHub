@@ -104,21 +104,34 @@ html, body, [class*="css"] {{
     border-left: 3px solid {ACCENT} !important;
 }}
 .stButton>button {{
-    background: {CARD} !important;
-    border: 1px solid {BORDER} !important;
-    color: {TEXT} !important;
+    background: #1E3A5A !important;
+    border: 1px solid #3A6080 !important;
+    color: #FFFFFF !important;
     font-family: 'Space Grotesk', sans-serif !important;
     border-radius: 8px !important;
+    font-weight: 500 !important;
 }}
 .stButton>button:hover {{
     border-color: {ACCENT} !important;
     color: {ACCENT} !important;
+    background: #1E4A6A !important;
+}}
+[data-testid="stSidebar"] .stButton>button {{
+    background: transparent !important;
+    border: none !important;
 }}
 .stTextInput>div>div>input, .stSelectbox>div>div>div {{
-    background: {CARD} !important;
-    color: {TEXT} !important;
-    border: 1px solid {BORDER} !important;
+    background: #1E3A5A !important;
+    color: #FFFFFF !important;
+    border: 1px solid #4A7FA5 !important;
     border-radius: 8px !important;
+}}
+.stTextInput>div>div>input::placeholder {{
+    color: #8899AA !important;
+}}
+label, .stTextInput label, .stSelectbox label {{
+    color: #CCDDEE !important;
+    font-size: 0.88rem !important;
 }}
 [data-testid="stMetricValue"] {{ color: {ACCENT} !important; font-family: 'Space Grotesk', sans-serif !important; }}
 [data-testid="stMetricLabel"] {{ color: {TEXT2} !important; }}
@@ -207,8 +220,8 @@ if not st.session_state.inmo_logged:
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
-        <div style='background:{CARD};border:1px solid {BORDER};border-radius:16px;
-            padding:2rem;'>
+        <div style='background:#1A3050;border:1px solid #3A6080;border-radius:16px;
+            padding:2rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);'>
         """, unsafe_allow_html=True)
 
         email = st.text_input("Email", placeholder="tu@inmobiliaria.com", key="login_email")
@@ -650,18 +663,13 @@ if menu == "Dashboard":
         line=dict(color=RED, width=2, dash="dash"),
         mode="lines+markers",
         marker=dict(size=5),
-        yaxis="y2",
     ))
     fig_evo.update_layout(
         height=220, margin=dict(l=0, r=0, t=10, b=0),
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(font=dict(color=TEXT2, size=11), bgcolor="rgba(0,0,0,0)"),
         xaxis=dict(gridcolor=BORDER, color=TEXT2, tickfont=dict(size=11)),
-        yaxis=dict(gridcolor=BORDER, color=TEXT2, title="Rentabilidad %",
-                   titlefont=dict(color=TEXT2, size=10), tickfont=dict(size=10)),
-        yaxis2=dict(overlaying="y", side="right", color=TEXT2,
-                    tickfont=dict(size=10), showgrid=False),
-        barmode="group",
+        yaxis=dict(gridcolor=BORDER, color=TEXT2, tickfont=dict(size=10)),
     )
     st.plotly_chart(fig_evo, use_container_width=True, config={"displayModeBar": False})
     st.markdown("</div>", unsafe_allow_html=True)
