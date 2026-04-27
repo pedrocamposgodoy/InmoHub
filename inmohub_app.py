@@ -882,21 +882,58 @@ elif menu == "Radar de Mercado":
 elif menu == "Lead Marketplace":
     section_header("🛒 Lead Marketplace", "Capa 2 — Solo propietarios que autorizaron compartir sus datos (RGPD)")
 
+    # KPIs por estado
+    nuevos     = [l for l in leads_data if l.get("estado") == "nuevo"]
+    contactados = [l for l in leads_data if l.get("estado") == "contactado"]
+    cerrados   = [l for l in leads_data if l.get("estado") == "cerrado"]
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown(f"""
+        <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
+            padding:1rem;text-align:center;border-top:3px solid {ACCENT};'>
+            <div style='font-size:2rem;font-weight:700;color:{ACCENT};'>{len(leads_data)}</div>
+            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>Total leads</div>
+        </div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""
+        <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
+            padding:1rem;text-align:center;border-top:3px solid {RED};'>
+            <div style='font-size:2rem;font-weight:700;color:{RED};'>{len(nuevos)}</div>
+            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>🔴 Nuevos</div>
+        </div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""
+        <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
+            padding:1rem;text-align:center;border-top:3px solid {AMBER};'>
+            <div style='font-size:2rem;font-weight:700;color:{AMBER};'>{len(contactados)}</div>
+            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>🟡 Contactados</div>
+        </div>""", unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""
+        <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
+            padding:1rem;text-align:center;border-top:3px solid #888;'>
+            <div style='font-size:2rem;font-weight:700;color:#888;'>{len(cerrados)}</div>
+            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>⚫ Cerrados</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
     # Filtros
-    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+    col_f1, col_f2, col_f3 = st.columns(3)
     with col_f1:
-        filtro_cp = st.selectbox("CP", ["Todos"] + sorted(set(l.get("cp","") for l in leads_data)))
+        filtro_estado = st.selectbox("Estado", ["Nuevos 🔴","Contactados 🟡","Cerrados ⚫","Todos"], index=0)
     with col_f2:
         filtro_perfil = st.selectbox("Perfil", ["Todos","INVERSOR EN ESTRÉS","UPGRADE ESTÉTICO","CONTRATO VENCIENDO","FATIGA DEL PROPIETARIO"])
     with col_f3:
         filtro_score = st.selectbox("IA Score", ["Todos",">80%","60-80%","<60%"])
-    with col_f4:
-        filtro_estado = st.selectbox("Estado", ["Todos","nuevo","contactado","cerrado"])
 
     # Aplicar filtros
+    estado_map = {"Nuevos 🔴":"nuevo","Contactados 🟡":"contactado","Cerrados ⚫":"cerrado","Todos":None}
+    estado_fil = estado_map[filtro_estado]
     leads_filtrados = leads_data[:]
-    if filtro_cp != "Todos":
-        leads_filtrados = [l for l in leads_filtrados if l.get("cp") == filtro_cp]
+    if estado_fil:
+        leads_filtrados = [l for l in leads_filtrados if l.get("estado") == estado_fil]
     if filtro_perfil != "Todos":
         leads_filtrados = [l for l in leads_filtrados if filtro_perfil in l.get("perfil","")]
     if filtro_score == ">80%":
@@ -905,42 +942,55 @@ elif menu == "Lead Marketplace":
         leads_filtrados = [l for l in leads_filtrados if 60 <= l.get("ia_score",0) <= 80]
     elif filtro_score == "<60%":
         leads_filtrados = [l for l in leads_filtrados if l.get("ia_score",0) < 60]
-    if filtro_estado != "Todos":
-        leads_filtrados = [l for l in leads_filtrados if l.get("estado") == filtro_estado]
-
-    # Métricas rápidas
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Leads disponibles", len(leads_filtrados))
-    c2.metric("IA Score medio", f"{sum(l.get('ia_score',0) for l in leads_filtrados)/max(len(leads_filtrados),1):.0f}%")
-    c3.metric("Brecha media", f"€{sum(l.get('brecha_euros',0) for l in leads_filtrados)/max(len(leads_filtrados),1):.0f}/mes")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     if not leads_filtrados:
-        st.info("No hay leads con esos filtros.")
+        st.markdown(f"""
+        <div style='background:{CARD};border:1px solid {BORDER};border-radius:12px;
+            padding:2rem;text-align:center;'>
+            <div style='font-size:2rem;margin-bottom:0.5rem;'>📭</div>
+            <div style='color:{TEXT2};font-size:0.9rem;'>No hay leads en este estado.</div>
+            <div style='color:{TEXT2};font-size:0.8rem;margin-top:4px;'>
+                Los leads aparecen cuando propietarios de Nolasco Capital solicitan asesoramiento.
+            </div>
+        </div>""", unsafe_allow_html=True)
     else:
         for lead in leads_filtrados:
+            estado_actual = lead.get("estado","nuevo")
+            lid = lead.get("id","")
+            id_real = lead.get("_id_real", lid)
+
             col_card, col_actions = st.columns([4, 1])
             with col_card:
                 lead_card(lead, preview=False)
             with col_actions:
-                st.markdown("<br>", unsafe_allow_html=True)
-                lid = lead.get("id","")
-                estado_actual = lead.get("estado","nuevo")
+                st.markdown("<br><br><br>", unsafe_allow_html=True)
                 if estado_actual == "nuevo":
-                    if st.button("📞 Marcar contactado", key=f"cont_{lid}", use_container_width=True):
-                        id_real = lead.get("_id_real", lid)
+                    if st.button("📞 Contactado", key=f"cont_{lid}_{id_real}", use_container_width=True):
                         supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"contactado"})
                         st.cache_data.clear()
                         st.rerun()
-                elif estado_actual == "contactado":
-                    if st.button("✅ Marcar cerrado", key=f"cerr_{lid}", use_container_width=True):
-                        id_real = lead.get("_id_real", lid)
+                    if st.button("⛔ Descartar", key=f"desc_{lid}_{id_real}", use_container_width=True):
                         supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"cerrado"})
                         st.cache_data.clear()
                         st.rerun()
-                    if st.button("↩️ Marcar nuevo", key=f"reset_{lid}", use_container_width=True):
-                        id_real = lead.get("_id_real", lid)
+                elif estado_actual == "contactado":
+                    if st.button("✅ Cerrar trato", key=f"cerr_{lid}_{id_real}", use_container_width=True):
+                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"cerrado"})
+                        st.cache_data.clear()
+                        st.rerun()
+                    if st.button("↩️ Reabrir", key=f"reab_{lid}_{id_real}", use_container_width=True):
+                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
+                        st.cache_data.clear()
+                        st.rerun()
+                elif estado_actual == "cerrado":
+                    st.markdown(f"""
+                    <div style='font-size:0.75rem;color:#888;text-align:center;
+                        padding:0.5rem;background:{CARD};border-radius:8px;'>
+                        ⚫ Cerrado
+                    </div>""", unsafe_allow_html=True)
+                    if st.button("↩️ Reabrir", key=f"reab2_{lid}_{id_real}", use_container_width=True):
                         supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
                         st.cache_data.clear()
                         st.rerun()
@@ -948,7 +998,10 @@ elif menu == "Lead Marketplace":
     # Exportar CSV
     st.markdown("<br>", unsafe_allow_html=True)
     if leads_filtrados:
-        df_export = pd.DataFrame(leads_filtrados)
+        df_export = pd.DataFrame([
+            {k:v for k,v in l.items() if not k.startswith("_")}
+            for l in leads_filtrados
+        ])
         csv = df_export.to_csv(index=False)
         st.download_button(
             "📥 Exportar leads a CSV",
