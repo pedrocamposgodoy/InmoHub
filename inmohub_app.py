@@ -48,7 +48,7 @@ def supabase_get(path, params=""):
 def supabase_patch(path, payload):
     try:
         r = requests.patch(f"{SUPA_URL}/rest/v1/{path}",
-                           headers={**_headers(), "Prefer": "return=representation"},
+                           headers={**_headers(), "Prefer": "return=minimal"},
                            json=payload, timeout=8)
         return r.status_code in (200, 204)
     except Exception:
@@ -294,15 +294,16 @@ def cargar_zona_stats():
 
 @st.cache_data(ttl=60)
 def cargar_leads():
-    # Leer leads reales de Supabase con datos de inmobiliaria
+    # Leer leads reales de Supabase — excluye descartados de vista activa
     data = supabase_get("leads_inmobiliarias",
-                        "?order=created_at.desc&select=*,inmobiliarias(nombre)")
+                        "?order=created_at.desc&select=*,inmobiliarias(nombre)&estado=neq.descartado")
     if data and isinstance(data, list) and len(data) > 0:
-        # Normalizar campos para compatibilidad con el resto del código
         leads = []
         for l in data:
+            uuid_completo = str(l.get("id", ""))  # UUID completo — NUNCA truncar
             leads.append({
-                "id":           f"LH-{str(l.get('id',''))[:6].upper()}",
+                "id":           f"LH-{uuid_completo[:8].upper()}",  # Solo display
+                "_id_real":     uuid_completo,                        # UUID completo para PATCH
                 "cp":           l.get("cp", "18001"),
                 "perfil":       _clasificar_perfil(l),
                 "ia_score":     _calcular_score(l),
@@ -316,7 +317,6 @@ def cargar_leads():
                 "email":        l.get("email", "—"),
                 "telefono":     l.get("telefono", "—"),
                 "inmobiliaria": l.get("inmobiliarias", {}).get("nombre", "—") if isinstance(l.get("inmobiliarias"), dict) else "—",
-                "_id_real":     l.get("id", ""),
             })
         return leads
     return LEADS_MOCK
@@ -928,7 +928,7 @@ elif menu == "Lead Marketplace":
         <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
             padding:1rem;text-align:center;border-top:3px solid #888;'>
             <div style='font-size:2rem;font-weight:700;color:#888;'>{len(cerrados)}</div>
-            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>⚫ Cerrados</div>
+            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>✅ Cerrados</div>
         </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -936,14 +936,14 @@ elif menu == "Lead Marketplace":
     # Filtros
     col_f1, col_f2, col_f3 = st.columns(3)
     with col_f1:
-        filtro_estado = st.selectbox("Estado", ["Nuevos 🔴","Contactados 🟡","Cerrados ⚫","Todos"], index=0)
+        filtro_estado = st.selectbox("Estado", ["Nuevos 🔴","Contactados 🟡","Cerrados ✅","Todos"], index=0)
     with col_f2:
         filtro_perfil = st.selectbox("Perfil", ["Todos","INVERSOR EN ESTRÉS","UPGRADE ESTÉTICO","CONTRATO VENCIENDO","FATIGA DEL PROPIETARIO"])
     with col_f3:
         filtro_score = st.selectbox("IA Score", ["Todos",">80%","60-80%","<60%"])
 
     # Aplicar filtros
-    estado_map = {"Nuevos 🔴":"nuevo","Contactados 🟡":"contactado","Cerrados ⚫":"cerrado","Todos":None}
+    estado_map = {"Nuevos 🔴":"nuevo","Contactados 🟡":"contactado","Cerrados ✅":"cerrado","Todos":None}
     estado_fil = estado_map[filtro_estado]
     leads_filtrados = leads_data[:]
     if estado_fil:
@@ -974,6 +974,8 @@ elif menu == "Lead Marketplace":
             estado_actual = lead.get("estado","nuevo")
             lid = lead.get("id","")
             id_real = lead.get("_id_real", lid)
+            # Si id_real es igual a lid (mock) o está vacío, no hay UUID real
+            es_real = id_real and id_real != lid
 
             col_card, col_actions = st.columns([4, 1])
             with col_card:
@@ -981,31 +983,47 @@ elif menu == "Lead Marketplace":
             with col_actions:
                 st.markdown("<br><br><br>", unsafe_allow_html=True)
                 if estado_actual == "nuevo":
-                    if st.button("📞 Contactado", key=f"cont_{lid}_{id_real}", use_container_width=True):
-                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"contactado"})
+                    if st.button("📞 Contactado", key=f"cont_{lid}", use_container_width=True):
+                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"contactado"})
+                        if ok:
+                            st.toast("✅ Lead marcado como Contactado", icon="📞")
+                        else:
+                            st.toast("⚠️ Error al actualizar", icon="❌")
                         st.cache_data.clear()
                         st.rerun()
-                    if st.button("⛔ Descartar", key=f"desc_{lid}_{id_real}", use_container_width=True):
-                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"cerrado"})
+                    if st.button("⛔ Descartar", key=f"desc_{lid}", use_container_width=True):
+                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"descartado"})
+                        if ok:
+                            st.toast("Lead descartado — no aparecerá más en el panel", icon="⛔")
+                        else:
+                            st.toast("⚠️ Error al actualizar", icon="❌")
                         st.cache_data.clear()
                         st.rerun()
                 elif estado_actual == "contactado":
-                    if st.button("✅ Cerrar trato", key=f"cerr_{lid}_{id_real}", use_container_width=True):
-                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"cerrado"})
+                    if st.button("✅ Cerrar trato", key=f"cerr_{lid}", use_container_width=True):
+                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"cerrado"})
+                        if ok:
+                            st.toast("🎉 ¡Trato cerrado! Lead archivado.", icon="✅")
+                        else:
+                            st.toast("⚠️ Error al actualizar", icon="❌")
                         st.cache_data.clear()
                         st.rerun()
-                    if st.button("↩️ Reabrir", key=f"reab_{lid}_{id_real}", use_container_width=True):
-                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
+                    if st.button("↩️ Reabrir", key=f"reab_{lid}", use_container_width=True):
+                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
+                        if ok:
+                            st.toast("Lead reabierto como Nuevo", icon="↩️")
                         st.cache_data.clear()
                         st.rerun()
                 elif estado_actual == "cerrado":
                     st.markdown(f"""
                     <div style='font-size:0.75rem;color:#888;text-align:center;
-                        padding:0.5rem;background:{CARD};border-radius:8px;'>
-                        ⚫ Cerrado
+                        padding:0.5rem;background:{CARD};border-radius:8px;margin-bottom:4px;'>
+                        ✅ Trato cerrado
                     </div>""", unsafe_allow_html=True)
-                    if st.button("↩️ Reabrir", key=f"reab2_{lid}_{id_real}", use_container_width=True):
-                        supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
+                    if st.button("↩️ Reabrir", key=f"reab2_{lid}", use_container_width=True):
+                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
+                        if ok:
+                            st.toast("Lead reabierto como Nuevo", icon="↩️")
                         st.cache_data.clear()
                         st.rerun()
 
