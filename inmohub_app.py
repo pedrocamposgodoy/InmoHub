@@ -901,46 +901,61 @@ elif menu == "Lead Marketplace":
     contactados = [l for l in leads_data if l.get("estado") == "contactado"]
     cerrados   = [l for l in leads_data if l.get("estado") == "cerrado"]
 
+    # KPI cards clickables — filtran la lista al pulsar
+    if "crm_filtro" not in st.session_state:
+        st.session_state["crm_filtro"] = "Nuevos 🔴"
+
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f"""
-        <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
-            padding:1rem;text-align:center;border-top:3px solid {ACCENT};'>
-            <div style='font-size:2rem;font-weight:700;color:{ACCENT};'>{len(leads_data)}</div>
-            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>Total leads</div>
-        </div>""", unsafe_allow_html=True)
+        sel_todos = st.session_state["crm_filtro"] == "Todos"
+        borde_todos = f"3px solid {ACCENT}" if sel_todos else f"3px solid {ACCENT}33"
+        if st.button(f"**{len(leads_data)}**\nTODOS", key="kpi_todos", use_container_width=True):
+            st.session_state["crm_filtro"] = "Todos"
+            st.rerun()
+        st.markdown(f"""<div style='margin-top:-8px;text-align:center;font-size:0.7rem;
+            color:{ACCENT if sel_todos else TEXT2};text-transform:uppercase;'>Total leads</div>""",
+            unsafe_allow_html=True)
     with c2:
-        st.markdown(f"""
-        <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
-            padding:1rem;text-align:center;border-top:3px solid {RED};'>
-            <div style='font-size:2rem;font-weight:700;color:{RED};'>{len(nuevos)}</div>
-            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>🔴 Nuevos</div>
-        </div>""", unsafe_allow_html=True)
+        sel_nv = st.session_state["crm_filtro"] == "Nuevos 🔴"
+        if st.button(f"**{len(nuevos)}**\n🔴 NUEVOS", key="kpi_nuevos", use_container_width=True):
+            st.session_state["crm_filtro"] = "Nuevos 🔴"
+            st.rerun()
+        st.markdown(f"""<div style='margin-top:-8px;text-align:center;font-size:0.7rem;
+            color:{RED if sel_nv else TEXT2};text-transform:uppercase;'>Pendientes</div>""",
+            unsafe_allow_html=True)
     with c3:
-        st.markdown(f"""
-        <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
-            padding:1rem;text-align:center;border-top:3px solid {AMBER};'>
-            <div style='font-size:2rem;font-weight:700;color:{AMBER};'>{len(contactados)}</div>
-            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>🟡 Contactados</div>
-        </div>""", unsafe_allow_html=True)
+        sel_ct = st.session_state["crm_filtro"] == "Contactados 🟡"
+        if st.button(f"**{len(contactados)}**\n🟡 CONTACTADOS", key="kpi_contactados", use_container_width=True):
+            st.session_state["crm_filtro"] = "Contactados 🟡"
+            st.rerun()
+        st.markdown(f"""<div style='margin-top:-8px;text-align:center;font-size:0.7rem;
+            color:{AMBER if sel_ct else TEXT2};text-transform:uppercase;'>En seguimiento</div>""",
+            unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""
-        <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
-            padding:1rem;text-align:center;border-top:3px solid #888;'>
-            <div style='font-size:2rem;font-weight:700;color:#888;'>{len(cerrados)}</div>
-            <div style='font-size:0.72rem;color:{TEXT2};text-transform:uppercase;'>✅ Cerrados</div>
-        </div>""", unsafe_allow_html=True)
+        sel_cr = st.session_state["crm_filtro"] == "Cerrados ✅"
+        if st.button(f"**{len(cerrados)}**\n✅ CERRADOS", key="kpi_cerrados", use_container_width=True):
+            st.session_state["crm_filtro"] = "Cerrados ✅"
+            st.rerun()
+        st.markdown(f"""<div style='margin-top:-8px;text-align:center;font-size:0.7rem;
+            color:#00C9A7 if sel_cr else {TEXT2};text-transform:uppercase;'>Tratos ganados</div>""",
+            unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Filtros
+    # Filtros — el estado se sincroniza con los KPI cards
     col_f1, col_f2, col_f3 = st.columns(3)
+    opciones_estado = ["Nuevos 🔴","Contactados 🟡","Cerrados ✅","Todos"]
+    idx_actual = opciones_estado.index(st.session_state["crm_filtro"]) if st.session_state["crm_filtro"] in opciones_estado else 0
     with col_f1:
-        filtro_estado = st.selectbox("Estado", ["Nuevos 🔴","Contactados 🟡","Cerrados ✅","Todos"], index=0)
+        filtro_estado = st.selectbox("Estado", opciones_estado, index=idx_actual,
+                                     key="sel_estado_crm",
+                                     on_change=lambda: st.session_state.update({"crm_filtro": st.session_state["sel_estado_crm"]}))
     with col_f2:
         filtro_perfil = st.selectbox("Perfil", ["Todos","INVERSOR EN ESTRÉS","UPGRADE ESTÉTICO","CONTRATO VENCIENDO","FATIGA DEL PROPIETARIO"])
     with col_f3:
         filtro_score = st.selectbox("IA Score", ["Todos",">80%","60-80%","<60%"])
+    
+    filtro_estado = st.session_state["crm_filtro"]
 
     # Aplicar filtros
     estado_map = {"Nuevos 🔴":"nuevo","Contactados 🟡":"contactado","Cerrados ✅":"cerrado","Todos":None}
