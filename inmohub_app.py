@@ -47,11 +47,14 @@ def supabase_get(path, params=""):
 
 def supabase_patch(path, payload):
     try:
-        r = requests.patch(f"{SUPA_URL}/rest/v1/{path}",
-                           headers={**_headers(), "Prefer": "return=minimal"},
-                           json=payload, timeout=8)
+        url = f"{SUPA_URL}/rest/v1/{path}"
+        headers = {**_headers(), "Prefer": "return=minimal"}
+        r = requests.patch(url, headers=headers, json=payload, timeout=8)
+        # Debug temporal — muestra en sidebar qué devuelve Supabase
+        st.session_state["_patch_debug"] = f"URL: {url} | Status: {r.status_code} | Body: {r.text[:200]}"
         return r.status_code in (200, 204)
-    except Exception:
+    except Exception as e:
+        st.session_state["_patch_debug"] = f"Exception: {str(e)}"
         return False
 
 # ================================================================
@@ -956,6 +959,10 @@ elif menu == "Lead Marketplace":
         filtro_score = st.selectbox("IA Score", ["Todos",">80%","60-80%","<60%"])
     
     filtro_estado = st.session_state["crm_filtro"]
+
+    # DEBUG TEMPORAL — eliminar después
+    if "_patch_debug" in st.session_state:
+        st.error(f"🔧 DEBUG: {st.session_state['_patch_debug']}")
 
     # Aplicar filtros
     estado_map = {"Nuevos 🔴":"nuevo","Contactados 🟡":"contactado","Cerrados ✅":"cerrado","Todos":None}
