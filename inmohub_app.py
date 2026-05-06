@@ -895,163 +895,158 @@ elif menu == "Radar de Mercado":
 elif menu == "Lead Marketplace":
     section_header("🛒 Lead Marketplace", "Capa 2 — Solo propietarios que autorizaron compartir sus datos (RGPD)")
 
-    # Recargar leads frescos desde Supabase en cada interacción
+    # Siempre recargar leads frescos desde Supabase
     leads_data = cargar_leads()
 
-    # KPIs por estado
-    nuevos     = [l for l in leads_data if l.get("estado") == "nuevo"]
+    nuevos      = [l for l in leads_data if l.get("estado") == "nuevo"]
     contactados = [l for l in leads_data if l.get("estado") == "contactado"]
-    cerrados   = [l for l in leads_data if l.get("estado") == "cerrado"]
+    cerrados    = [l for l in leads_data if l.get("estado") == "cerrado"]
 
-    # KPI cards clickables — filtran la lista al pulsar
-    if "crm_filtro" not in st.session_state:
-        st.session_state["crm_filtro"] = "Nuevos 🔴"
+    # ── TOTALES ──────────────────────────────────────────────────
+    st.markdown(f"""
+    <div style='display:flex;gap:1rem;margin-bottom:1.5rem;'>
+        <div style='flex:1;background:{CARD};border-radius:10px;padding:1rem;
+            text-align:center;border-top:3px solid {ACCENT};'>
+            <div style='font-size:1.8rem;font-weight:700;color:{ACCENT};'>{len(leads_data)}</div>
+            <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Total leads</div>
+        </div>
+        <div style='flex:1;background:{CARD};border-radius:10px;padding:1rem;
+            text-align:center;border-top:3px solid {RED};'>
+            <div style='font-size:1.8rem;font-weight:700;color:{RED};'>{len(nuevos)}</div>
+            <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>🔴 Nuevos</div>
+        </div>
+        <div style='flex:1;background:{CARD};border-radius:10px;padding:1rem;
+            text-align:center;border-top:3px solid {AMBER};'>
+            <div style='font-size:1.8rem;font-weight:700;color:{AMBER};'>{len(contactados)}</div>
+            <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>🟡 Contactados</div>
+        </div>
+        <div style='flex:1;background:{CARD};border-radius:10px;padding:1rem;
+            text-align:center;border-top:3px solid {ACCENT};'>
+            <div style='font-size:1.8rem;font-weight:700;color:{ACCENT};'>{len(cerrados)}</div>
+            <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>✅ Cerrados</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        sel_todos = st.session_state["crm_filtro"] == "Todos"
-        borde_todos = f"3px solid {ACCENT}" if sel_todos else f"3px solid {ACCENT}33"
-        if st.button(f"**{len(leads_data)}**\nTODOS", key="kpi_todos", use_container_width=True):
-            st.session_state["crm_filtro"] = "Todos"
-            st.rerun()
-        st.markdown(f"""<div style='margin-top:-8px;text-align:center;font-size:0.7rem;
-            color:{ACCENT if sel_todos else TEXT2};text-transform:uppercase;'>Total leads</div>""",
-            unsafe_allow_html=True)
-    with c2:
-        sel_nv = st.session_state["crm_filtro"] == "Nuevos 🔴"
-        if st.button(f"**{len(nuevos)}**\n🔴 NUEVOS", key="kpi_nuevos", use_container_width=True):
-            st.session_state["crm_filtro"] = "Nuevos 🔴"
-            st.rerun()
-        st.markdown(f"""<div style='margin-top:-8px;text-align:center;font-size:0.7rem;
-            color:{RED if sel_nv else TEXT2};text-transform:uppercase;'>Pendientes</div>""",
-            unsafe_allow_html=True)
-    with c3:
-        sel_ct = st.session_state["crm_filtro"] == "Contactados 🟡"
-        if st.button(f"**{len(contactados)}**\n🟡 CONTACTADOS", key="kpi_contactados", use_container_width=True):
-            st.session_state["crm_filtro"] = "Contactados 🟡"
-            st.rerun()
-        st.markdown(f"""<div style='margin-top:-8px;text-align:center;font-size:0.7rem;
-            color:{AMBER if sel_ct else TEXT2};text-transform:uppercase;'>En seguimiento</div>""",
-            unsafe_allow_html=True)
-    with c4:
-        sel_cr = st.session_state["crm_filtro"] == "Cerrados ✅"
-        if st.button(f"**{len(cerrados)}**\n✅ CERRADOS", key="kpi_cerrados", use_container_width=True):
-            st.session_state["crm_filtro"] = "Cerrados ✅"
-            st.rerun()
-        st.markdown(f"""<div style='margin-top:-8px;text-align:center;font-size:0.7rem;
-            color:#00C9A7 if sel_cr else {TEXT2};text-transform:uppercase;'>Tratos ganados</div>""",
-            unsafe_allow_html=True)
+    # ── KANBAN 3 COLUMNAS ─────────────────────────────────────────
+    st.markdown(f"""
+    <div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;
+        background:{BORDER};border-radius:12px;overflow:hidden;margin-bottom:1rem;'>
+        <div style='background:{CARD};padding:0.75rem 1rem;text-align:center;
+            font-weight:700;color:{RED};font-size:0.85rem;'>
+            🔴 NUEVOS — {len(nuevos)}
+        </div>
+        <div style='background:{CARD};padding:0.75rem 1rem;text-align:center;
+            font-weight:700;color:{AMBER};font-size:0.85rem;'>
+            🟡 CONTACTADOS — {len(contactados)}
+        </div>
+        <div style='background:{CARD};padding:0.75rem 1rem;text-align:center;
+            font-weight:700;color:{ACCENT};font-size:0.85rem;'>
+            ✅ CERRADOS — {len(cerrados)}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    col_n, col_c, col_x = st.columns(3)
 
-    # Filtros — el estado se sincroniza con los KPI cards
-    col_f1, col_f2, col_f3 = st.columns(3)
-    opciones_estado = ["Nuevos 🔴","Contactados 🟡","Cerrados ✅","Todos"]
-    idx_actual = opciones_estado.index(st.session_state["crm_filtro"]) if st.session_state["crm_filtro"] in opciones_estado else 0
-    with col_f1:
-        filtro_estado = st.selectbox("Estado", opciones_estado, index=idx_actual,
-                                     key="sel_estado_crm",
-                                     on_change=lambda: st.session_state.update({"crm_filtro": st.session_state["sel_estado_crm"]}))
-    with col_f2:
-        filtro_perfil = st.selectbox("Perfil", ["Todos","INVERSOR EN ESTRÉS","UPGRADE ESTÉTICO","CONTRATO VENCIENDO","FATIGA DEL PROPIETARIO"])
-    with col_f3:
-        filtro_score = st.selectbox("IA Score", ["Todos",">80%","60-80%","<60%"])
-    
-    filtro_estado = st.session_state["crm_filtro"]
-
-    # Aplicar filtros
-    estado_map = {"Nuevos 🔴":"nuevo","Contactados 🟡":"contactado","Cerrados ✅":"cerrado","Todos":None}
-    estado_fil = estado_map[filtro_estado]
-    leads_filtrados = leads_data[:]
-    if estado_fil:
-        leads_filtrados = [l for l in leads_filtrados if l.get("estado") == estado_fil]
-    if filtro_perfil != "Todos":
-        leads_filtrados = [l for l in leads_filtrados if filtro_perfil in l.get("perfil","")]
-    if filtro_score == ">80%":
-        leads_filtrados = [l for l in leads_filtrados if l.get("ia_score",0) > 80]
-    elif filtro_score == "60-80%":
-        leads_filtrados = [l for l in leads_filtrados if 60 <= l.get("ia_score",0) <= 80]
-    elif filtro_score == "<60%":
-        leads_filtrados = [l for l in leads_filtrados if l.get("ia_score",0) < 60]
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    if not leads_filtrados:
-        st.markdown(f"""
-        <div style='background:{CARD};border:1px solid {BORDER};border-radius:12px;
-            padding:2rem;text-align:center;'>
-            <div style='font-size:2rem;margin-bottom:0.5rem;'>📭</div>
-            <div style='color:{TEXT2};font-size:0.9rem;'>No hay leads en este estado.</div>
-            <div style='color:{TEXT2};font-size:0.8rem;margin-top:4px;'>
-                Los leads aparecen cuando propietarios de Nolasco Capital solicitan asesoramiento.
+    def _lead_mini(lead, col, accion_label, accion_estado, accion_key, color_btn,
+                   accion2_label=None, accion2_estado=None, accion2_key=None):
+        """Renderiza una tarjeta de lead en el kanban con su botón de acción."""
+        id_real = lead.get("_id_real", lead.get("id",""))
+        score   = lead.get("ia_score", 0)
+        color_score = RED if score >= 75 else (AMBER if score >= 50 else TEXT2)
+        with col:
+            st.markdown(f"""
+            <div style='background:#1A2F4A;border:1px solid {BORDER};border-radius:10px;
+                padding:0.85rem;margin-bottom:0.75rem;'>
+                <div style='display:flex;justify-content:space-between;align-items:center;
+                    margin-bottom:0.4rem;'>
+                    <span style='font-size:0.7rem;color:{TEXT2};'>{lead.get("id","")}</span>
+                    <span style='font-size:0.85rem;font-weight:700;color:{color_score};'>{score}%</span>
+                </div>
+                <div style='font-weight:700;font-size:0.82rem;color:#fff;margin-bottom:0.3rem;'>
+                    {lead.get("perfil","—")}
+                </div>
+                <div style='font-size:0.75rem;color:{TEXT2};margin-bottom:0.3rem;'>
+                    📍 CP {lead.get("cp","—")} · 💶 {lead.get("precio_lead",45)}€
+                </div>
+                <div style='font-size:0.75rem;color:#ccc;margin-bottom:0.5rem;'>
+                    👤 {lead.get("nombre","—")}
+                </div>
+                <div style='font-size:0.72rem;color:{TEXT2};'>
+                    📧 {lead.get("email","—")}
+                </div>
             </div>
-        </div>""", unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+            if st.button(accion_label, key=accion_key, use_container_width=True):
+                ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado": accion_estado})
+                if ok:
+                    st.toast(f"✅ Lead → {accion_estado}", icon="✅")
+                else:
+                    st.toast("⚠️ Error al actualizar en Supabase", icon="❌")
+                st.rerun()
+            if accion2_label:
+                if st.button(accion2_label, key=accion2_key, use_container_width=True):
+                    ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado": accion2_estado})
+                    if ok:
+                        st.toast(f"Lead → {accion2_estado}", icon="↩️")
+                    st.rerun()
+
+    # COLUMNA NUEVOS
+    if not nuevos:
+        with col_n:
+            st.markdown(f"<div style='color:{TEXT2};font-size:0.8rem;text-align:center;"
+                        f"padding:2rem;'>Sin leads nuevos</div>", unsafe_allow_html=True)
     else:
-        for lead in leads_filtrados:
-            estado_actual = lead.get("estado","nuevo")
-            lid = lead.get("id","")
-            id_real = lead.get("_id_real", lid)
-            # Si id_real es igual a lid (mock) o está vacío, no hay UUID real
-            es_real = id_real and id_real != lid
+        for i, lead in enumerate(nuevos):
+            _lead_mini(lead, col_n,
+                       accion_label="📞 Marcar Contactado",
+                       accion_estado="contactado",
+                       accion_key=f"n_cont_{i}",
+                       color_btn=AMBER,
+                       accion2_label="⛔ Descartar",
+                       accion2_estado="descartado",
+                       accion2_key=f"n_desc_{i}")
 
-            col_card, col_actions = st.columns([4, 1])
-            with col_card:
-                lead_card(lead, preview=False)
-            with col_actions:
-                st.markdown("<br><br><br>", unsafe_allow_html=True)
-                if estado_actual == "nuevo":
-                    if st.button("📞 Contactado", key=f"cont_{lid}", use_container_width=True):
-                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"contactado"})
-                        if ok:
-                            st.toast("✅ Lead marcado como Contactado", icon="📞")
-                            st.session_state["crm_filtro"] = "Contactados 🟡"
-                        else:
-                            st.toast("⚠️ Error al actualizar", icon="❌")
-                        st.rerun()
-                    if st.button("⛔ Descartar", key=f"desc_{lid}", use_container_width=True):
-                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"descartado"})
-                        if ok:
-                            st.toast("Lead descartado — no aparecerá más en el panel", icon="⛔")
-                        else:
-                            st.toast("⚠️ Error al actualizar", icon="❌")
-                        st.rerun()
-                elif estado_actual == "contactado":
-                    if st.button("✅ Cerrar trato", key=f"cerr_{lid}", use_container_width=True):
-                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"cerrado"})
-                        if ok:
-                            st.toast("🎉 ¡Trato cerrado! Lead archivado.", icon="✅")
-                            st.session_state["crm_filtro"] = "Cerrados ✅"
-                        else:
-                            st.toast("⚠️ Error al actualizar", icon="❌")
-                        st.rerun()
-                    if st.button("↩️ Reabrir", key=f"reab_{lid}", use_container_width=True):
-                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
-                        if ok:
-                            st.toast("Lead reabierto como Nuevo", icon="↩️")
-                            st.session_state["crm_filtro"] = "Nuevos 🔴"
-                        st.rerun()
-                elif estado_actual == "cerrado":
-                    st.markdown(f"""
-                    <div style='font-size:0.75rem;color:#888;text-align:center;
-                        padding:0.5rem;background:{CARD};border-radius:8px;margin-bottom:4px;'>
-                        ✅ Trato cerrado
-                    </div>""", unsafe_allow_html=True)
-                    if st.button("↩️ Reabrir", key=f"reab2_{lid}", use_container_width=True):
-                        ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
-                        if ok:
-                            st.toast("Lead reabierto como Nuevo", icon="↩️")
-                        st.rerun()
+    # COLUMNA CONTACTADOS
+    if not contactados:
+        with col_c:
+            st.markdown(f"<div style='color:{TEXT2};font-size:0.8rem;text-align:center;"
+                        f"padding:2rem;'>Sin leads en seguimiento</div>", unsafe_allow_html=True)
+    else:
+        for i, lead in enumerate(contactados):
+            _lead_mini(lead, col_c,
+                       accion_label="✅ Cerrar trato",
+                       accion_estado="cerrado",
+                       accion_key=f"c_cerr_{i}",
+                       color_btn=ACCENT,
+                       accion2_label="↩️ Reabrir",
+                       accion2_estado="nuevo",
+                       accion2_key=f"c_reab_{i}")
 
-    # Exportar CSV
+    # COLUMNA CERRADOS
+    if not cerrados:
+        with col_x:
+            st.markdown(f"<div style='color:{TEXT2};font-size:0.8rem;text-align:center;"
+                        f"padding:2rem;'>Sin tratos cerrados</div>", unsafe_allow_html=True)
+    else:
+        for i, lead in enumerate(cerrados):
+            _lead_mini(lead, col_x,
+                       accion_label="↩️ Reabrir",
+                       accion_estado="nuevo",
+                       accion_key=f"x_reab_{i}",
+                       color_btn=TEXT2)
+
+    # ── EXPORTAR CSV ──────────────────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
-    if leads_filtrados:
+    if leads_data:
         df_export = pd.DataFrame([
             {k:v for k,v in l.items() if not k.startswith("_")}
-            for l in leads_filtrados
+            for l in leads_data
         ])
         csv = df_export.to_csv(index=False)
         st.download_button(
-            "📥 Exportar leads a CSV",
+            "📥 Exportar todos los leads a CSV",
             data=csv,
             file_name=f"leads_inmohub_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
             mime="text/csv",
