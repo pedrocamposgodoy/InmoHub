@@ -47,14 +47,11 @@ def supabase_get(path, params=""):
 
 def supabase_patch(path, payload):
     try:
-        url = f"{SUPA_URL}/rest/v1/{path}"
-        headers = {**_headers(), "Prefer": "return=minimal"}
-        r = requests.patch(url, headers=headers, json=payload, timeout=8)
-        # Debug temporal — muestra en sidebar qué devuelve Supabase
-        st.session_state["_patch_debug"] = f"URL: {url} | Status: {r.status_code} | Body: {r.text[:200]}"
+        r = requests.patch(f"{SUPA_URL}/rest/v1/{path}",
+                           headers={**_headers(), "Prefer": "return=minimal"},
+                           json=payload, timeout=8)
         return r.status_code in (200, 204)
-    except Exception as e:
-        st.session_state["_patch_debug"] = f"Exception: {str(e)}"
+    except Exception:
         return False
 
 # ================================================================
@@ -295,7 +292,6 @@ def cargar_zona_stats():
     data = supabase_get("zona_stats", "?order=brecha_pct_media.desc")
     return data if data else ZONA_STATS_MOCK
 
-@st.cache_data(ttl=60)
 def cargar_leads():
     # Leer leads reales de Supabase — excluye descartados de vista activa
     data = supabase_get("leads_inmobiliarias",
@@ -960,10 +956,6 @@ elif menu == "Lead Marketplace":
     
     filtro_estado = st.session_state["crm_filtro"]
 
-    # DEBUG TEMPORAL — eliminar después
-    if "_patch_debug" in st.session_state:
-        st.error(f"🔧 DEBUG: {st.session_state['_patch_debug']}")
-
     # Aplicar filtros
     estado_map = {"Nuevos 🔴":"nuevo","Contactados 🟡":"contactado","Cerrados ✅":"cerrado","Todos":None}
     estado_fil = estado_map[filtro_estado]
@@ -1012,7 +1004,6 @@ elif menu == "Lead Marketplace":
                             st.session_state["crm_filtro"] = "Contactados 🟡"
                         else:
                             st.toast("⚠️ Error al actualizar", icon="❌")
-                        st.cache_data.clear()
                         st.rerun()
                     if st.button("⛔ Descartar", key=f"desc_{lid}", use_container_width=True):
                         ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"descartado"})
@@ -1020,7 +1011,6 @@ elif menu == "Lead Marketplace":
                             st.toast("Lead descartado — no aparecerá más en el panel", icon="⛔")
                         else:
                             st.toast("⚠️ Error al actualizar", icon="❌")
-                        st.cache_data.clear()
                         st.rerun()
                 elif estado_actual == "contactado":
                     if st.button("✅ Cerrar trato", key=f"cerr_{lid}", use_container_width=True):
@@ -1030,14 +1020,12 @@ elif menu == "Lead Marketplace":
                             st.session_state["crm_filtro"] = "Cerrados ✅"
                         else:
                             st.toast("⚠️ Error al actualizar", icon="❌")
-                        st.cache_data.clear()
                         st.rerun()
                     if st.button("↩️ Reabrir", key=f"reab_{lid}", use_container_width=True):
                         ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
                         if ok:
                             st.toast("Lead reabierto como Nuevo", icon="↩️")
                             st.session_state["crm_filtro"] = "Nuevos 🔴"
-                        st.cache_data.clear()
                         st.rerun()
                 elif estado_actual == "cerrado":
                     st.markdown(f"""
@@ -1049,7 +1037,6 @@ elif menu == "Lead Marketplace":
                         ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
                         if ok:
                             st.toast("Lead reabierto como Nuevo", icon="↩️")
-                        st.cache_data.clear()
                         st.rerun()
 
     # Exportar CSV
