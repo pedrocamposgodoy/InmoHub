@@ -351,11 +351,11 @@ def _calcular_precio(lead):
     return 35
 
 zona_stats = cargar_zona_stats()
-leads_data  = cargar_leads()
 
-# KPIs globales calculados
-total_leads     = len(leads_data)
-leads_nuevos    = len([l for l in leads_data if l.get("estado") == "nuevo"])
+# KPIs globales calculados (leads se recargan en cada sección que los necesite)
+_leads_global   = cargar_leads()
+total_leads     = len(_leads_global)
+leads_nuevos    = len([l for l in _leads_global if l.get("estado") == "nuevo"])
 lucro_total     = sum(z.get("lucro_cesante_total", 0) for z in zona_stats)
 contratos_90d   = sum(z.get("contratos_vencen_90d", 0) for z in zona_stats)
 ia_scores_altos = len([l for l in leads_data if l.get("ia_score", 0) >= 75])
@@ -894,6 +894,9 @@ elif menu == "Radar de Mercado":
 # ================================================================
 elif menu == "Lead Marketplace":
     section_header("🛒 Lead Marketplace", "Capa 2 — Solo propietarios que autorizaron compartir sus datos (RGPD)")
+
+    # Recargar leads frescos desde Supabase en cada interacción
+    leads_data = cargar_leads()
 
     # KPIs por estado
     nuevos     = [l for l in leads_data if l.get("estado") == "nuevo"]
