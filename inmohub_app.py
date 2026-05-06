@@ -1002,6 +1002,7 @@ elif menu == "Lead Marketplace":
                         ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"contactado"})
                         if ok:
                             st.toast("✅ Lead marcado como Contactado", icon="📞")
+                            st.session_state["crm_filtro"] = "Contactados 🟡"
                         else:
                             st.toast("⚠️ Error al actualizar", icon="❌")
                         st.cache_data.clear()
@@ -1019,6 +1020,7 @@ elif menu == "Lead Marketplace":
                         ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"cerrado"})
                         if ok:
                             st.toast("🎉 ¡Trato cerrado! Lead archivado.", icon="✅")
+                            st.session_state["crm_filtro"] = "Cerrados ✅"
                         else:
                             st.toast("⚠️ Error al actualizar", icon="❌")
                         st.cache_data.clear()
@@ -1027,6 +1029,7 @@ elif menu == "Lead Marketplace":
                         ok = supabase_patch(f"leads_inmobiliarias?id=eq.{id_real}", {"estado":"nuevo"})
                         if ok:
                             st.toast("Lead reabierto como Nuevo", icon="↩️")
+                            st.session_state["crm_filtro"] = "Nuevos 🔴"
                         st.cache_data.clear()
                         st.rerun()
                 elif estado_actual == "cerrado":
