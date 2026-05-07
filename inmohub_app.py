@@ -1304,50 +1304,6 @@ elif menu == "Clientes":
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>📅 Estado de Contratos</div>", unsafe_allow_html=True)
 
-            contratos_html = ""
-            for inm in inmuebles:
-                nombre_inm = inm.get("nombre","—")
-                fecha_venc_raw = inm.get("fecha_vencimiento_contrato")
-                tipo_arr = inm.get("tipo_arrendamiento", "—")
-                inquilino = inm.get("inquilino","Sin inquilino")
-
-                dias_txt = "—"
-                color_dias = TEXT2
-                semaforo = "⚪"
-                try:
-                    if fecha_venc_raw and str(fecha_venc_raw) not in ["None","nan",""]:
-                        fecha_venc = _dt.strptime(str(fecha_venc_raw)[:10], "%Y-%m-%d").date()
-                        dias = (fecha_venc - _date.today()).days
-                        if dias < 0:
-                            dias_txt = f"Vencido hace {abs(dias)}d"
-                            color_dias = RED
-                            semaforo = "🔴"
-                        elif dias <= 30:
-                            dias_txt = f"{dias} días"
-                            color_dias = RED
-                            semaforo = "🔴"
-                        elif dias <= 90:
-                            dias_txt = f"{dias} días"
-                            color_dias = AMBER
-                            semaforo = "🟡"
-                        else:
-                            dias_txt = f"{dias} días"
-                            color_dias = ACCENT
-                            semaforo = "🟢"
-                except:
-                    dias_txt = "Sin fecha"
-
-                contratos_html += f"""
-                <div style='display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr;
-                    gap:0.5rem;background:{CARD};border:1px solid {BORDER};
-                    border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.4rem;
-                    align-items:center;'>
-                    <div style='font-weight:700;color:#fff;font-size:0.85rem;'>{semaforo} {nombre_inm}</div>
-                    <div style='font-size:0.8rem;color:{TEXT2};'>{inquilino}</div>
-                    <div style='font-size:0.8rem;color:{TEXT2};'>{tipo_arr}</div>
-                    <div style='font-weight:700;color:{color_dias};font-size:0.8rem;'>{dias_txt}</div>
-                </div>"""
-
             # Header tabla
             st.markdown(f"""
             <div style='display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr;
@@ -1357,8 +1313,45 @@ elif menu == "Clientes":
                 <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Tipo</div>
                 <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Vencimiento</div>
             </div>
-            {contratos_html}
             """, unsafe_allow_html=True)
+            # Renderizar cada contrato individualmente
+            for inm in inmuebles:
+                nombre_inm = inm.get("nombre","—")
+                fecha_venc_raw = inm.get("fecha_vencimiento_contrato")
+                tipo_arr = inm.get("tipo_arrendamiento", "—")
+                inquilino = inm.get("inquilino","Sin inquilino")
+                dias_txt = "—"
+                color_dias = TEXT2
+                semaforo = "⚪"
+                try:
+                    if fecha_venc_raw and str(fecha_venc_raw) not in ["None","nan",""]:
+                        fecha_venc = _dt.strptime(str(fecha_venc_raw)[:10], "%Y-%m-%d").date()
+                        dias = (fecha_venc - _date.today()).days
+                        if dias < 0:
+                            dias_txt = f"Vencido hace {abs(dias)}d"
+                            color_dias = RED; semaforo = "🔴"
+                        elif dias <= 30:
+                            dias_txt = f"{dias} días"
+                            color_dias = RED; semaforo = "🔴"
+                        elif dias <= 90:
+                            dias_txt = f"{dias} días"
+                            color_dias = AMBER; semaforo = "🟡"
+                        else:
+                            dias_txt = f"{dias} días"
+                            color_dias = ACCENT; semaforo = "🟢"
+                except:
+                    dias_txt = "Sin fecha"
+                st.markdown(f"""
+                <div style='display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr;
+                    gap:0.5rem;background:{CARD};border:1px solid {BORDER};
+                    border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.4rem;
+                    align-items:center;'>
+                    <div style='font-weight:700;color:#fff;font-size:0.85rem;'>{semaforo} {nombre_inm}</div>
+                    <div style='font-size:0.8rem;color:{TEXT2};'>{inquilino}</div>
+                    <div style='font-size:0.8rem;color:{TEXT2};'>{tipo_arr}</div>
+                    <div style='font-weight:700;color:{color_dias};font-size:0.8rem;'>{dias_txt}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             # ── FICHAS INMUEBLES (solo lectura) ──────────────────
             st.markdown("<br>", unsafe_allow_html=True)
