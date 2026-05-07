@@ -368,6 +368,7 @@ PAGES = [
     ("📊", "Dashboard"),
     ("📡", "Radar de Mercado"),
     ("🛒", "Lead Marketplace"),
+    ("👤", "Clientes"),
     ("👥", "Fidelización"),
     ("🤖", "AI Advisory"),
     ("⚙️", "Configuración"),
@@ -1056,6 +1057,206 @@ elif menu == "Lead Marketplace":
 # ================================================================
 # PÁGINA 4 — FIDELIZACIÓN
 # ================================================================
+elif menu == "Clientes":
+    section_header("👤 Clientes", "Accede al patrimonio de tus clientes propietarios")
+
+    # ── FUNCIONES AUXILIARES ─────────────────────────────────────
+    def buscar_cliente_por_codigo(codigo):
+        """Busca propietario por código de acceso."""
+        try:
+            r = requests.get(
+                f"{SUPA_URL}/rest/v1/accesos_asesor?codigo=eq.{codigo}&activo=eq.true&select=propietario_id",
+                headers=_headers(), timeout=8
+            )
+            data = r.json()
+            if not data:
+                return None
+            propietario_id = data[0]["propietario_id"]
+            # Leer inmuebles del propietario
+            ri = requests.get(
+                f"{SUPA_URL}/rest/v1/inmuebles?user_id=eq.{propietario_id}&select=*",
+                headers=_headers(), timeout=8
+            )
+            inmuebles = ri.json() if ri.status_code == 200 else []
+            # Leer nombre del propietario
+            ru = requests.get(
+                f"{SUPA_URL}/rest/v1/usuarios?user_id=eq.{propietario_id}&select=nombre,email",
+                headers=_headers(), timeout=8
+            )
+            usuario = ru.json()
+            nombre = usuario[0].get("nombre", "Propietario") if usuario else "Propietario"
+            email  = usuario[0].get("email", "") if usuario else ""
+            return {"propietario_id": propietario_id, "nombre": nombre,
+                    "email": email, "inmuebles": inmuebles}
+        except Exception as e:
+            return None
+
+    def safe_num(val, default=0.0):
+        try: return float(val or default)
+        except: return default
+
+    # ── SESSION STATE ─────────────────────────────────────────────
+    if "clientes_lista" not in st.session_state:
+        st.session_state["clientes_lista"] = []
+    if "cliente_sel" not in st.session_state:
+        st.session_state["cliente_sel"] = None
+
+    # ── AÑADIR CLIENTE ────────────────────────────────────────────
+    st.markdown(f"""
+    <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;padding:1rem;margin-bottom:1rem;'>
+        <div style='font-weight:700;color:#fff;margin-bottom:0.5rem;'>➕ Añadir cliente por código</div>
+        <div style='font-size:0.8rem;color:{TEXT2};'>Pide a tu cliente que genere un código en Nolasco Capital → Compartir con Asesor</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_cod, col_btn = st.columns([3, 1])
+    with col_cod:
+        codigo_input = st.text_input("Código de 6 dígitos", placeholder="847291",
+                                      max_chars=6, label_visibility="collapsed")
+    with col_btn:
+        if st.button("Añadir", use_container_width=True, type="primary"):
+            if codigo_input and len(codigo_input) == 6:
+                with st.spinner("Buscando..."):
+                    cliente = buscar_cliente_por_codigo(codigo_input)
+                if cliente:
+                    # Comprobar si ya está en la lista
+                    ids_existentes = [c["propietario_id"] for c in st.session_state["clientes_lista"]]
+                    if cliente["propietario_id"] not in ids_existentes:
+                        st.session_state["clientes_lista"].append(cliente)
+                        st.toast(f"✅ Cliente añadido: {cliente['nombre']}", icon="✅")
+                    else:
+                        st.warning("Este cliente ya está en tu lista.")
+                else:
+                    st.error("Código no válido o expirado. Pide al cliente que genere uno nuevo.")
+            else:
+                st.warning("El código debe tener 6 dígitos.")
+
+    # ── LISTA DE CLIENTES ─────────────────────────────────────────
+    clientes = st.session_state["clientes_lista"]
+    if not clientes:
+        st.markdown(f"""
+        <div style='background:{CARD};border:1px dashed {BORDER};border-radius:10px;
+            padding:2rem;text-align:center;margin-top:1rem;'>
+            <div style='font-size:2rem;margin-bottom:0.5rem;'>👤</div>
+            <div style='color:{TEXT2};font-size:0.9rem;'>Sin clientes añadidos todavía.</div>
+            <div style='color:{TEXT2};font-size:0.8rem;margin-top:4px;'>
+                Introduce el código que te facilite tu cliente para ver su patrimonio.
+            </div>
+        </div>""", unsafe_allow_html=True)
+    else:
+        st.markdown("<br>", unsafe_allow_html=True)
+        for i, cliente in enumerate(clientes):
+            n_inmuebles = len(cliente.get("inmuebles", []))
+            ingresos = sum(safe_num(inm.get("renta")) * 12 for inm in cliente.get("inmuebles", []))
+            col_cl, col_btn2 = st.columns([4, 1])
+            with col_cl:
+                if st.button(
+                    f"👤 **{cliente['nombre']}** — {cliente['email']} · {n_inmuebles} inmuebles · {ingresos:,.0f} €/año",
+                    key=f"cl_{i}", use_container_width=True
+                ):
+                    st.session_state["cliente_sel"] = i
+                    st.rerun()
+            with col_btn2:
+                if st.button("✕", key=f"rm_{i}", use_container_width=True):
+                    st.session_state["clientes_lista"].pop(i)
+                    if st.session_state["cliente_sel"] == i:
+                        st.session_state["cliente_sel"] = None
+                    st.rerun()
+
+    # ── FICHA DEL CLIENTE SELECCIONADO ───────────────────────────
+    if st.session_state["cliente_sel"] is not None:
+        idx = st.session_state["cliente_sel"]
+        if idx < len(clientes):
+            cliente = clientes[idx]
+            inmuebles = cliente.get("inmuebles", [])
+
+            st.markdown("---")
+            # Nombre cliente destacado
+            st.markdown(f"""
+            <div style='background:{CARD};border-left:4px solid {ACCENT};border-radius:8px;
+                padding:1rem 1.5rem;margin-bottom:1.5rem;'>
+                <div style='font-size:1.3rem;font-weight:700;color:#fff;'>
+                    👤 {cliente['nombre']}
+                </div>
+                <div style='font-size:0.8rem;color:{TEXT2};'>{cliente['email']} · {len(inmuebles)} inmuebles</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # ── TORRE DE CONTROL (solo lectura) ──────────────────
+            st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>📊 Torre de Control</div>", unsafe_allow_html=True)
+
+            ingresos_tot = sum(safe_num(i.get("renta")) * 12 for i in inmuebles)
+            gastos_tot   = sum(safe_num(i.get("comunidad")) * 12 + safe_num(i.get("ibi_anual")) +
+                               safe_num(i.get("seguro_anual")) for i in inmuebles)
+            beneficio    = ingresos_tot - gastos_tot
+            rent_media   = (beneficio / ingresos_tot * 100) if ingresos_tot > 0 else 0
+
+            kc1, kc2, kc3, kc4 = st.columns(4)
+            def kpi_card(col, label, valor, color):
+                col.markdown(f"""
+                <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
+                    padding:1rem;text-align:center;border-top:3px solid {color};'>
+                    <div style='font-size:1.5rem;font-weight:700;color:{color};'>{valor}</div>
+                    <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>{label}</div>
+                </div>""", unsafe_allow_html=True)
+
+            kpi_card(kc1, "Ingresos anuales",  f"{ingresos_tot:,.0f} €", ACCENT)
+            kpi_card(kc2, "Gastos anuales",     f"{gastos_tot:,.0f} €",   RED)
+            kpi_card(kc3, "Beneficio neto",     f"{beneficio:,.0f} €",    AMBER)
+            kpi_card(kc4, "Rentabilidad media", f"{rent_media:.1f}%",     ACCENT)
+
+            # ── FICHAS INMUEBLES (solo lectura) ──────────────────
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>🏠 Fichas de Inmuebles</div>", unsafe_allow_html=True)
+
+            for inm in inmuebles:
+                renta_actual = safe_num(inm.get("renta"))
+                renta_mercado = safe_num(inm.get("renta_mercado"))
+                brecha = renta_mercado - renta_actual
+                brecha_anual = brecha * 12
+                color_brecha = RED if brecha > 100 else (AMBER if brecha > 0 else ACCENT)
+                rent_bruta = (renta_actual * 12 / safe_num(inm.get("valor_construccion"), 1) * 100) if safe_num(inm.get("valor_construccion")) > 0 else 0
+
+                st.markdown(f"""
+                <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
+                    padding:1rem;margin-bottom:0.75rem;'>
+                    <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;'>
+                        <div style='font-weight:700;font-size:0.95rem;color:#fff;'>
+                            🏠 {inm.get("nombre","—")}
+                        </div>
+                        <div style='font-size:0.8rem;color:{TEXT2};'>CP {inm.get("cp","—")} · {inm.get("tipo","—")}</div>
+                    </div>
+                    <div style='display:flex;gap:2rem;flex-wrap:wrap;'>
+                        <div>
+                            <div style='font-size:0.7rem;color:{TEXT2};'>Renta actual</div>
+                            <div style='font-weight:700;color:{ACCENT};'>{renta_actual:,.0f} €/mes</div>
+                        </div>
+                        <div>
+                            <div style='font-size:0.7rem;color:{TEXT2};'>Renta mercado</div>
+                            <div style='font-weight:700;color:#fff;'>{renta_mercado:,.0f} €/mes</div>
+                        </div>
+                        <div>
+                            <div style='font-size:0.7rem;color:{TEXT2};'>Lucro cesante</div>
+                            <div style='font-weight:700;color:{color_brecha};'>{brecha_anual:+,.0f} €/año</div>
+                        </div>
+                        <div>
+                            <div style='font-size:0.7rem;color:{TEXT2};'>Rentabilidad bruta</div>
+                            <div style='font-weight:700;color:{ACCENT};'>{rent_bruta:.1f}%</div>
+                        </div>
+                        <div>
+                            <div style='font-size:0.7rem;color:{TEXT2};'>Inquilino</div>
+                            <div style='font-weight:700;color:#fff;'>{inm.get("inquilino","—")}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div style='font-size:0.75rem;color:{TEXT2};margin-top:1rem;text-align:center;'>
+            🔒 Vista de solo lectura · El cliente puede revocar este acceso desde Nolasco Capital
+            </div>
+            """, unsafe_allow_html=True)
+
 elif menu == "Fidelización":
     section_header("👥 Fidelización de Clientes", "Family Office — Tu cliente nunca te abandona")
 
