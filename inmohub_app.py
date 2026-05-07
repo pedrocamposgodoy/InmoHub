@@ -1064,11 +1064,10 @@ elif menu == "Clientes":
     def buscar_cliente_por_codigo(codigo):
         """Busca propietario por código de acceso."""
         try:
-            r = requests.get(
-                f"{SUPA_URL}/rest/v1/accesos_asesor?codigo=eq.{codigo}&activo=eq.true&select=propietario_id",
-                headers=_headers(), timeout=8
-            )
+            url = f"{SUPA_URL}/rest/v1/accesos_asesor?codigo=eq.{codigo}&activo=eq.true&select=propietario_id"
+            r = requests.get(url, headers=_headers(), timeout=8)
             data = r.json()
+            st.session_state["_debug_codigo"] = f"Status: {r.status_code} | Data: {data} | URL: {url}"
             if not data:
                 return None
             propietario_id = data[0]["propietario_id"]
@@ -1118,6 +1117,9 @@ elif menu == "Clientes":
             if codigo_input and len(codigo_input) == 6:
                 with st.spinner("Buscando..."):
                     cliente = buscar_cliente_por_codigo(codigo_input)
+                # Mostrar debug temporal
+                if "_debug_codigo" in st.session_state:
+                    st.error(f"🔧 DEBUG: {st.session_state['_debug_codigo']}")
                 if cliente:
                     # Comprobar si ya está en la lista
                     ids_existentes = [c["propietario_id"] for c in st.session_state["clientes_lista"]]
