@@ -201,7 +201,8 @@ def login_inmobiliaria(email, password):
         )
         data = r.json()
         if r.status_code == 200 and "access_token" in data:
-            return {"success": True, "token": data["access_token"], "email": email}
+            user_id = data.get("user", {}).get("id", "")
+            return {"success": True, "token": data["access_token"], "email": email, "user_id": user_id}
         return {"success": False, "error": data.get("error_description", "Credenciales incorrectas")}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -210,6 +211,7 @@ def login_inmobiliaria(email, password):
 for k, v in [
     ("inmo_logged", False), ("inmo_token", None),
     ("inmo_email", None),   ("inmo_menu", "Dashboard"),
+    ("inmo_user_id", None),
 ]:
     if k not in st.session_state:
         st.session_state[k] = v
@@ -261,9 +263,10 @@ if not st.session_state.inmo_logged:
                 with st.spinner("Verificando..."):
                     result = login_inmobiliaria(email, password)
                 if result["success"]:
-                    st.session_state.inmo_logged = True
-                    st.session_state.inmo_token  = result["token"]
-                    st.session_state.inmo_email  = result["email"]
+                    st.session_state.inmo_logged  = True
+                    st.session_state.inmo_token   = result["token"]
+                    st.session_state.inmo_email   = result["email"]
+                    st.session_state.inmo_user_id = result.get("user_id","")
                     st.rerun()
                 else:
                     st.error(f"❌ {result['error']}")
@@ -1106,11 +1109,69 @@ elif menu == "Clientes":
         try: return float(val or default)
         except: return default
 
+    # ── FUNCIONES PERSISTENCIA ──────────────────────────────────
+    asesor_id = st.session_state.get("inmo_user_id", "")
+
+    def cargar_codigos_guardados():
+        """Carga los códigos guardados del asesor desde Supabase."""
+        if not asesor_id:
+            return []
+        try:
+            r = requests.get(
+                f"{SUPA_URL}/rest/v1/asesor_clientes?asesor_id=eq.{asesor_id}&select=codigo",
+                headers=_headers(), timeout=8
+            )
+            return [row["codigo"] for row in r.json()] if r.status_code == 200 else []
+        except:
+            return []
+
+    def guardar_codigo_asesor(codigo):
+        """Guarda un código en Supabase para el asesor."""
+        if not asesor_id:
+            return
+        try:
+            # Verificar si ya existe
+            r = requests.get(
+                f"{SUPA_URL}/rest/v1/asesor_clientes?asesor_id=eq.{asesor_id}&codigo=eq.{codigo}",
+                headers=_headers(), timeout=8
+            )
+            if r.status_code == 200 and not r.json():
+                requests.post(
+                    f"{SUPA_URL}/rest/v1/asesor_clientes",
+                    headers={**_headers(), "Prefer": "return=minimal"},
+                    json={"asesor_id": asesor_id, "codigo": codigo},
+                    timeout=8
+                )
+        except:
+            pass
+
+    def eliminar_codigo_asesor(codigo):
+        """Elimina un código guardado del asesor."""
+        if not asesor_id:
+            return
+        try:
+            requests.delete(
+                f"{SUPA_URL}/rest/v1/asesor_clientes?asesor_id=eq.{asesor_id}&codigo=eq.{codigo}",
+                headers={**_headers(), "Prefer": "return=minimal"},
+                timeout=8
+            )
+        except:
+            pass
+
     # ── SESSION STATE ─────────────────────────────────────────────
-    if "clientes_lista" not in st.session_state:
-        st.session_state["clientes_lista"] = []
     if "cliente_sel" not in st.session_state:
         st.session_state["cliente_sel"] = None
+
+    # Cargar clientes desde Supabase si no están en sesión
+    if "clientes_lista" not in st.session_state or not st.session_state["clientes_lista"]:
+        codigos_guardados = cargar_codigos_guardados()
+        clientes_cargados = []
+        for cod in codigos_guardados:
+            cliente = buscar_cliente_por_codigo(cod)
+            if cliente:
+                cliente["_codigo"] = cod
+                clientes_cargados.append(cliente)
+        st.session_state["clientes_lista"] = clientes_cargados
 
     # ── AÑADIR CLIENTE ────────────────────────────────────────────
     st.markdown(f"""
@@ -1136,7 +1197,9 @@ elif menu == "Clientes":
                     # Comprobar si ya está en la lista
                     ids_existentes = [c["propietario_id"] for c in st.session_state["clientes_lista"]]
                     if cliente["propietario_id"] not in ids_existentes:
+                        cliente["_codigo"] = codigo_input
                         st.session_state["clientes_lista"].append(cliente)
+                        guardar_codigo_asesor(codigo_input)
                         st.toast(f"✅ Cliente añadido: {cliente['nombre']}", icon="✅")
                     else:
                         st.warning("Este cliente ya está en tu lista.")
@@ -1172,6 +1235,9 @@ elif menu == "Clientes":
                     st.rerun()
             with col_btn2:
                 if st.button("✕", key=f"rm_{i}", use_container_width=True):
+                    cod_eliminar = clientes[i].get("_codigo","")
+                    if cod_eliminar:
+                        eliminar_codigo_asesor(cod_eliminar)
                     st.session_state["clientes_lista"].pop(i)
                     if st.session_state["cliente_sel"] == i:
                         st.session_state["cliente_sel"] = None
@@ -1304,8 +1370,10 @@ elif menu == "Clientes":
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>🏠 Inmuebles</div>", unsafe_allow_html=True)
 
-            for inm in inmuebles:
-                nombre_inm  = inm.get("nombre","—")
+            # Grid de casitas — 2 columnas
+            cols_inm = st.columns(2)
+            for i, inm in enumerate(inmuebles):
+                nombre_inm    = inm.get("nombre","—")
                 renta_actual  = safe_num(inm.get("renta"))
                 renta_mercado = safe_num(inm.get("renta_mercado"))
                 brecha        = renta_mercado - renta_actual
@@ -1314,73 +1382,81 @@ elif menu == "Clientes":
                 rent_bruta    = (renta_actual * 12 / safe_num(inm.get("valor_construccion"),1) * 100) if safe_num(inm.get("valor_construccion")) > 0 else 0
                 inquilino     = inm.get("inquilino","Sin inquilino")
                 tipo_arr      = inm.get("tipo_arrendamiento","—")
+                cp            = inm.get("cp","—")
 
-                # Calcular semáforo contrato
+                # Semáforo contrato
                 fecha_venc_raw = inm.get("fecha_vencimiento_contrato")
                 dias_txt   = "Sin fecha"
                 color_dias = TEXT2
                 semaforo   = "⚪"
+                badge_color = "#444"
                 try:
                     if fecha_venc_raw and str(fecha_venc_raw) not in ["None","nan",""]:
                         fecha_venc = _dt.strptime(str(fecha_venc_raw)[:10], "%Y-%m-%d").date()
                         dias = (fecha_venc - _date.today()).days
                         if dias < 0:
-                            dias_txt = f"Vencido hace {abs(dias)}d"
-                            color_dias = RED; semaforo = "🔴"
+                            dias_txt = f"Vencido {abs(dias)}d"
+                            color_dias = RED; semaforo = "🔴"; badge_color = RED
                         elif dias <= 30:
                             dias_txt = f"{dias}d restantes"
-                            color_dias = RED; semaforo = "🔴"
+                            color_dias = RED; semaforo = "🔴"; badge_color = RED
                         elif dias <= 90:
                             dias_txt = f"{dias}d restantes"
-                            color_dias = AMBER; semaforo = "🟡"
+                            color_dias = AMBER; semaforo = "🟡"; badge_color = AMBER
                         else:
                             dias_txt = f"{dias}d restantes"
-                            color_dias = ACCENT; semaforo = "🟢"
+                            color_dias = ACCENT; semaforo = "🟢"; badge_color = ACCENT
                 except:
                     pass
 
-                st.markdown(f"""
-                <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
-                    padding:1rem 1.2rem;margin-bottom:0.75rem;'>
-                    <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;'>
-                        <div style='font-weight:700;font-size:0.95rem;color:#fff;'>
-                            🏠 {nombre_inm}
+                with cols_inm[i % 2]:
+                    st.markdown(f"""
+                    <div style='background:{CARD};border:1px solid {BORDER};border-radius:16px;
+                        margin-bottom:1rem;overflow:hidden;'>
+
+                        <!-- TEJADO casita -->
+                        <div style='background:linear-gradient(135deg,{azul_acento if "azul_acento" in dir() else "#185FA5"} 0%,#0D1B2A 100%);
+                            padding:1rem 1.2rem 0.75rem;position:relative;'>
+                            <div style='display:flex;justify-content:space-between;align-items:flex-start;'>
+                                <div>
+                                    <div style='font-size:1.5rem;margin-bottom:2px;'>🏠</div>
+                                    <div style='font-weight:700;font-size:0.95rem;color:#fff;'>{nombre_inm}</div>
+                                    <div style='font-size:0.72rem;color:#8899AA;margin-top:2px;'>CP {cp} · {tipo_arr}</div>
+                                </div>
+                                <div style='text-align:right;'>
+                                    <div style='background:{badge_color}22;border:1px solid {badge_color};
+                                        border-radius:20px;padding:3px 10px;font-size:0.72rem;
+                                        font-weight:700;color:{badge_color};white-space:nowrap;'>
+                                        {semaforo} {dias_txt}
+                                    </div>
+                                    <div style='font-size:0.7rem;color:#8899AA;margin-top:4px;'>
+                                        👤 {inquilino}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div style='font-size:0.8rem;color:{TEXT2};'>CP {inm.get("cp","—")} · {inm.get("tipo","—")}</div>
+
+                        <!-- CUERPO casita — métricas -->
+                        <div style='padding:0.9rem 1.2rem;display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;'>
+                            <div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
+                                <div style='font-size:0.62rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Renta actual</div>
+                                <div style='font-weight:700;color:{ACCENT};font-size:1rem;'>{renta_actual:,.0f} €/mes</div>
+                            </div>
+                            <div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
+                                <div style='font-size:0.62rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Renta mercado</div>
+                                <div style='font-weight:700;color:#fff;font-size:1rem;'>{renta_mercado:,.0f} €/mes</div>
+                            </div>
+                            <div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
+                                <div style='font-size:0.62rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Lucro cesante</div>
+                                <div style='font-weight:700;color:{color_brecha};font-size:1rem;'>{brecha_anual:+,.0f} €/año</div>
+                            </div>
+                            <div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
+                                <div style='font-size:0.62rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Rentabilidad bruta</div>
+                                <div style='font-weight:700;color:{ACCENT};font-size:1rem;'>{rent_bruta:.1f}%</div>
+                            </div>
+                        </div>
                     </div>
-                    <div style='display:grid;grid-template-columns:repeat(5,1fr);gap:0.75rem;'>
-                        <div>
-                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Renta actual</div>
-                            <div style='font-weight:700;color:{ACCENT};font-size:0.9rem;'>{renta_actual:,.0f} €/mes</div>
-                        </div>
-                        <div>
-                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Renta mercado</div>
-                            <div style='font-weight:700;color:#fff;font-size:0.9rem;'>{renta_mercado:,.0f} €/mes</div>
-                        </div>
-                        <div>
-                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Lucro cesante</div>
-                            <div style='font-weight:700;color:{color_brecha};font-size:0.9rem;'>{brecha_anual:+,.0f} €/año</div>
-                        </div>
-                        <div>
-                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Rentabilidad</div>
-                            <div style='font-weight:700;color:{ACCENT};font-size:0.9rem;'>{rent_bruta:.1f}%</div>
-                        </div>
-                        <div>
-                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Contrato</div>
-                            <div style='font-weight:700;color:{color_dias};font-size:0.9rem;'>{semaforo} {dias_txt}</div>
-                        </div>
-                    </div>
-                    <div style='margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid {BORDER};
-                        display:flex;gap:2rem;'>
-                        <div style='font-size:0.75rem;color:{TEXT2};'>
-                            👤 <span style='color:#ccc;'>{inquilino}</span>
-                        </div>
-                        <div style='font-size:0.75rem;color:{TEXT2};'>
-                            📋 <span style='color:#ccc;'>{tipo_arr}</span>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
             st.markdown(f"""
             <div style='font-size:0.75rem;color:{TEXT2};margin-top:1rem;text-align:center;'>
