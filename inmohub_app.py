@@ -1370,93 +1370,82 @@ elif menu == "Clientes":
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>🏠 Inmuebles</div>", unsafe_allow_html=True)
 
-            # Grid de casitas — 2 columnas
-            cols_inm = st.columns(2)
-            for i, inm in enumerate(inmuebles):
-                nombre_inm    = inm.get("nombre","—")
-                renta_actual  = safe_num(inm.get("renta"))
-                renta_mercado = safe_num(inm.get("renta_mercado"))
-                brecha        = renta_mercado - renta_actual
-                brecha_anual  = brecha * 12
-                color_brecha  = RED if brecha > 100 else (AMBER if brecha > 50 else ACCENT)
-                rent_bruta    = (renta_actual * 12 / safe_num(inm.get("valor_construccion"),1) * 100) if safe_num(inm.get("valor_construccion")) > 0 else 0
-                inquilino     = inm.get("inquilino","Sin inquilino")
-                tipo_arr      = inm.get("tipo_arrendamiento","—")
-                cp            = inm.get("cp","—")
-
-                # Semáforo contrato
-                fecha_venc_raw = inm.get("fecha_vencimiento_contrato")
-                dias_txt   = "Sin fecha"
-                color_dias = TEXT2
-                semaforo   = "⚪"
-                badge_color = "#444"
-                try:
-                    if fecha_venc_raw and str(fecha_venc_raw) not in ["None","nan",""]:
-                        fecha_venc = _dt.strptime(str(fecha_venc_raw)[:10], "%Y-%m-%d").date()
-                        dias = (fecha_venc - _date.today()).days
-                        if dias < 0:
-                            dias_txt = f"Vencido {abs(dias)}d"
-                            color_dias = RED; semaforo = "🔴"; badge_color = RED
-                        elif dias <= 30:
-                            dias_txt = f"{dias}d restantes"
-                            color_dias = RED; semaforo = "🔴"; badge_color = RED
-                        elif dias <= 90:
-                            dias_txt = f"{dias}d restantes"
-                            color_dias = AMBER; semaforo = "🟡"; badge_color = AMBER
-                        else:
-                            dias_txt = f"{dias}d restantes"
-                            color_dias = ACCENT; semaforo = "🟢"; badge_color = ACCENT
-                except:
-                    pass
-
-                with cols_inm[i % 2]:
-                    st.markdown(f"""
-                    <div style='background:{CARD};border:1px solid {BORDER};border-radius:16px;
-                        margin-bottom:1rem;overflow:hidden;'>
-
-                        <!-- TEJADO casita -->
-                        <div style='background:linear-gradient(135deg,{azul_acento if "azul_acento" in dir() else "#185FA5"} 0%,#0D1B2A 100%);
-                            padding:1rem 1.2rem 0.75rem;position:relative;'>
-                            <div style='display:flex;justify-content:space-between;align-items:flex-start;'>
-                                <div>
-                                    <div style='font-size:1.5rem;margin-bottom:2px;'>🏠</div>
-                                    <div style='font-weight:700;font-size:0.95rem;color:#fff;'>{nombre_inm}</div>
-                                    <div style='font-size:0.72rem;color:#8899AA;margin-top:2px;'>CP {cp} · {tipo_arr}</div>
-                                </div>
-                                <div style='text-align:right;'>
-                                    <div style='background:{badge_color}22;border:1px solid {badge_color};
-                                        border-radius:20px;padding:3px 10px;font-size:0.72rem;
-                                        font-weight:700;color:{badge_color};white-space:nowrap;'>
-                                        {semaforo} {dias_txt}
-                                    </div>
-                                    <div style='font-size:0.7rem;color:#8899AA;margin-top:4px;'>
-                                        👤 {inquilino}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- CUERPO casita — métricas -->
-                        <div style='padding:0.9rem 1.2rem;display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;'>
-                            <div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
-                                <div style='font-size:0.62rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Renta actual</div>
-                                <div style='font-weight:700;color:{ACCENT};font-size:1rem;'>{renta_actual:,.0f} €/mes</div>
-                            </div>
-                            <div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
-                                <div style='font-size:0.62rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Renta mercado</div>
-                                <div style='font-weight:700;color:#fff;font-size:1rem;'>{renta_mercado:,.0f} €/mes</div>
-                            </div>
-                            <div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
-                                <div style='font-size:0.62rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Lucro cesante</div>
-                                <div style='font-weight:700;color:{color_brecha};font-size:1rem;'>{brecha_anual:+,.0f} €/año</div>
-                            </div>
-                            <div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
-                                <div style='font-size:0.62rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Rentabilidad bruta</div>
-                                <div style='font-weight:700;color:{ACCENT};font-size:1rem;'>{rent_bruta:.1f}%</div>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+            # Grid de casitas — 2 por fila
+            for i in range(0, len(inmuebles), 2):
+                col_a, col_b = st.columns(2)
+                for j, col in enumerate([col_a, col_b]):
+                    if i + j >= len(inmuebles):
+                        break
+                    inm = inmuebles[i + j]
+                    nombre_inm    = inm.get("nombre","—")
+                    renta_actual  = safe_num(inm.get("renta"))
+                    renta_mercado = safe_num(inm.get("renta_mercado"))
+                    brecha        = renta_mercado - renta_actual
+                    brecha_anual  = brecha * 12
+                    color_brecha  = RED if brecha > 100 else (AMBER if brecha > 50 else ACCENT)
+                    rent_bruta    = (renta_actual * 12 / safe_num(inm.get("valor_construccion"),1) * 100) if safe_num(inm.get("valor_construccion")) > 0 else 0
+                    inquilino     = inm.get("inquilino","Sin inquilino")
+                    tipo_arr      = inm.get("tipo_arrendamiento","—")
+                    cp            = inm.get("cp","—")
+                    fecha_venc_raw = inm.get("fecha_vencimiento_contrato")
+                    dias_txt   = "Sin fecha"
+                    color_dias = TEXT2
+                    semaforo   = "⚪"
+                    badge_color = "#444"
+                    try:
+                        if fecha_venc_raw and str(fecha_venc_raw) not in ["None","nan",""]:
+                            fecha_venc = _dt.strptime(str(fecha_venc_raw)[:10], "%Y-%m-%d").date()
+                            dias = (fecha_venc - _date.today()).days
+                            if dias < 0:
+                                dias_txt = f"Vencido {abs(dias)}d"
+                                color_dias = RED; semaforo = "🔴"; badge_color = RED
+                            elif dias <= 30:
+                                dias_txt = f"{dias}d restantes"
+                                color_dias = RED; semaforo = "🔴"; badge_color = RED
+                            elif dias <= 90:
+                                dias_txt = f"{dias}d restantes"
+                                color_dias = AMBER; semaforo = "🟡"; badge_color = AMBER
+                            else:
+                                dias_txt = f"{dias}d restantes"
+                                color_dias = ACCENT; semaforo = "🟢"; badge_color = ACCENT
+                    except:
+                        pass
+                    with col:
+                        st.markdown(f"""
+<div style='background:{CARD};border:1px solid {BORDER};border-radius:16px;margin-bottom:1rem;overflow:hidden;'>
+<div style='background:linear-gradient(135deg,#185FA5 0%,#0D1B2A 100%);padding:1rem 1.2rem 0.75rem;'>
+<div style='display:flex;justify-content:space-between;align-items:flex-start;'>
+<div>
+<div style='font-size:1.5rem;margin-bottom:2px;'>🏠</div>
+<div style='font-weight:700;font-size:0.95rem;color:#fff;'>{nombre_inm}</div>
+<div style='font-size:0.72rem;color:#8899AA;margin-top:2px;'>CP {cp} · {tipo_arr}</div>
+</div>
+<div style='text-align:right;'>
+<div style='background:{badge_color}33;border:1px solid {badge_color};border-radius:20px;padding:3px 10px;font-size:0.72rem;font-weight:700;color:{badge_color};white-space:nowrap;'>{semaforo} {dias_txt}</div>
+<div style='font-size:0.7rem;color:#8899AA;margin-top:4px;'>👤 {inquilino}</div>
+</div>
+</div>
+</div>
+<div style='padding:0.9rem 1.2rem;display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;'>
+<div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
+<div style='font-size:0.6rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Renta actual</div>
+<div style='font-weight:700;color:{ACCENT};font-size:0.95rem;'>{renta_actual:,.0f} €/mes</div>
+</div>
+<div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
+<div style='font-size:0.6rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Renta mercado</div>
+<div style='font-weight:700;color:#fff;font-size:0.95rem;'>{renta_mercado:,.0f} €/mes</div>
+</div>
+<div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
+<div style='font-size:0.6rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Lucro cesante</div>
+<div style='font-weight:700;color:{color_brecha};font-size:0.95rem;'>{brecha_anual:+,.0f} €/año</div>
+</div>
+<div style='background:#0D1B2A;border-radius:8px;padding:0.6rem 0.75rem;'>
+<div style='font-size:0.6rem;color:#8899AA;text-transform:uppercase;margin-bottom:2px;'>Rentabilidad</div>
+<div style='font-weight:700;color:{ACCENT};font-size:0.95rem;'>{rent_bruta:.1f}%</div>
+</div>
+</div>
+</div>
+                        """, unsafe_allow_html=True)
 
             st.markdown(f"""
             <div style='font-size:0.75rem;color:{TEXT2};margin-top:1rem;text-align:center;'>
