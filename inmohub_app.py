@@ -1300,29 +1300,26 @@ elif menu == "Clientes":
                 </div>
                 """, unsafe_allow_html=True)
 
-            # ── ESTADO DE CONTRATOS ───────────────────────────────
+            # ── FICHAS UNIFICADAS ─────────────────────────────────
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>📅 Estado de Contratos</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>🏠 Inmuebles</div>", unsafe_allow_html=True)
 
-            # Header tabla
-            st.markdown(f"""
-            <div style='display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr;
-                gap:0.5rem;padding:0.4rem 1rem;margin-bottom:0.2rem;'>
-                <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Inmueble</div>
-                <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Inquilino</div>
-                <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Tipo</div>
-                <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Vencimiento</div>
-            </div>
-            """, unsafe_allow_html=True)
-            # Renderizar cada contrato individualmente
             for inm in inmuebles:
-                nombre_inm = inm.get("nombre","—")
+                nombre_inm  = inm.get("nombre","—")
+                renta_actual  = safe_num(inm.get("renta"))
+                renta_mercado = safe_num(inm.get("renta_mercado"))
+                brecha        = renta_mercado - renta_actual
+                brecha_anual  = brecha * 12
+                color_brecha  = RED if brecha > 100 else (AMBER if brecha > 50 else ACCENT)
+                rent_bruta    = (renta_actual * 12 / safe_num(inm.get("valor_construccion"),1) * 100) if safe_num(inm.get("valor_construccion")) > 0 else 0
+                inquilino     = inm.get("inquilino","Sin inquilino")
+                tipo_arr      = inm.get("tipo_arrendamiento","—")
+
+                # Calcular semáforo contrato
                 fecha_venc_raw = inm.get("fecha_vencimiento_contrato")
-                tipo_arr = inm.get("tipo_arrendamiento", "—")
-                inquilino = inm.get("inquilino","Sin inquilino")
-                dias_txt = "—"
+                dias_txt   = "Sin fecha"
                 color_dias = TEXT2
-                semaforo = "⚪"
+                semaforo   = "⚪"
                 try:
                     if fecha_venc_raw and str(fecha_venc_raw) not in ["None","nan",""]:
                         fecha_venc = _dt.strptime(str(fecha_venc_raw)[:10], "%Y-%m-%d").date()
@@ -1331,69 +1328,55 @@ elif menu == "Clientes":
                             dias_txt = f"Vencido hace {abs(dias)}d"
                             color_dias = RED; semaforo = "🔴"
                         elif dias <= 30:
-                            dias_txt = f"{dias} días"
+                            dias_txt = f"{dias}d restantes"
                             color_dias = RED; semaforo = "🔴"
                         elif dias <= 90:
-                            dias_txt = f"{dias} días"
+                            dias_txt = f"{dias}d restantes"
                             color_dias = AMBER; semaforo = "🟡"
                         else:
-                            dias_txt = f"{dias} días"
+                            dias_txt = f"{dias}d restantes"
                             color_dias = ACCENT; semaforo = "🟢"
                 except:
-                    dias_txt = "Sin fecha"
-                st.markdown(f"""
-                <div style='display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr;
-                    gap:0.5rem;background:{CARD};border:1px solid {BORDER};
-                    border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.4rem;
-                    align-items:center;'>
-                    <div style='font-weight:700;color:#fff;font-size:0.85rem;'>{semaforo} {nombre_inm}</div>
-                    <div style='font-size:0.8rem;color:{TEXT2};'>{inquilino}</div>
-                    <div style='font-size:0.8rem;color:{TEXT2};'>{tipo_arr}</div>
-                    <div style='font-weight:700;color:{color_dias};font-size:0.8rem;'>{dias_txt}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # ── FICHAS INMUEBLES (solo lectura) ──────────────────
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>🏠 Fichas de Rentabilidad</div>", unsafe_allow_html=True)
-
-            for inm in inmuebles:
-                renta_actual = safe_num(inm.get("renta"))
-                renta_mercado = safe_num(inm.get("renta_mercado"))
-                brecha = renta_mercado - renta_actual
-                brecha_anual = brecha * 12
-                color_brecha = RED if brecha > 100 else (AMBER if brecha > 50 else ACCENT)
-                rent_bruta = (renta_actual * 12 / safe_num(inm.get("valor_construccion"), 1) * 100) if safe_num(inm.get("valor_construccion")) > 0 else 0
+                    pass
 
                 st.markdown(f"""
                 <div style='background:{CARD};border:1px solid {BORDER};border-radius:10px;
-                    padding:1rem;margin-bottom:0.75rem;'>
-                    <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;'>
+                    padding:1rem 1.2rem;margin-bottom:0.75rem;'>
+                    <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;'>
                         <div style='font-weight:700;font-size:0.95rem;color:#fff;'>
-                            🏠 {inm.get("nombre","—")}
+                            🏠 {nombre_inm}
                         </div>
                         <div style='font-size:0.8rem;color:{TEXT2};'>CP {inm.get("cp","—")} · {inm.get("tipo","—")}</div>
                     </div>
-                    <div style='display:flex;gap:2rem;flex-wrap:wrap;'>
+                    <div style='display:grid;grid-template-columns:repeat(5,1fr);gap:0.75rem;'>
                         <div>
-                            <div style='font-size:0.7rem;color:{TEXT2};'>Renta actual</div>
-                            <div style='font-weight:700;color:{ACCENT};'>{renta_actual:,.0f} €/mes</div>
+                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Renta actual</div>
+                            <div style='font-weight:700;color:{ACCENT};font-size:0.9rem;'>{renta_actual:,.0f} €/mes</div>
                         </div>
                         <div>
-                            <div style='font-size:0.7rem;color:{TEXT2};'>Renta mercado</div>
-                            <div style='font-weight:700;color:#fff;'>{renta_mercado:,.0f} €/mes</div>
+                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Renta mercado</div>
+                            <div style='font-weight:700;color:#fff;font-size:0.9rem;'>{renta_mercado:,.0f} €/mes</div>
                         </div>
                         <div>
-                            <div style='font-size:0.7rem;color:{TEXT2};'>Lucro cesante</div>
-                            <div style='font-weight:700;color:{color_brecha};'>{brecha_anual:+,.0f} €/año</div>
+                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Lucro cesante</div>
+                            <div style='font-weight:700;color:{color_brecha};font-size:0.9rem;'>{brecha_anual:+,.0f} €/año</div>
                         </div>
                         <div>
-                            <div style='font-size:0.7rem;color:{TEXT2};'>Rentabilidad bruta</div>
-                            <div style='font-weight:700;color:{ACCENT};'>{rent_bruta:.1f}%</div>
+                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Rentabilidad</div>
+                            <div style='font-weight:700;color:{ACCENT};font-size:0.9rem;'>{rent_bruta:.1f}%</div>
                         </div>
                         <div>
-                            <div style='font-size:0.7rem;color:{TEXT2};'>Inquilino</div>
-                            <div style='font-weight:700;color:#fff;'>{inm.get("inquilino","—")}</div>
+                            <div style='font-size:0.65rem;color:{TEXT2};text-transform:uppercase;'>Contrato</div>
+                            <div style='font-weight:700;color:{color_dias};font-size:0.9rem;'>{semaforo} {dias_txt}</div>
+                        </div>
+                    </div>
+                    <div style='margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid {BORDER};
+                        display:flex;gap:2rem;'>
+                        <div style='font-size:0.75rem;color:{TEXT2};'>
+                            👤 <span style='color:#ccc;'>{inquilino}</span>
+                        </div>
+                        <div style='font-size:0.75rem;color:{TEXT2};'>
+                            📋 <span style='color:#ccc;'>{tipo_arr}</span>
                         </div>
                     </div>
                 </div>
