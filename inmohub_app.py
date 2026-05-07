@@ -1064,30 +1064,42 @@ elif menu == "Clientes":
     def buscar_cliente_por_codigo(codigo):
         """Busca propietario por código de acceso."""
         try:
+            # 1. Buscar propietario_id por código
             url = f"{SUPA_URL}/rest/v1/accesos_asesor?codigo=eq.{codigo}&activo=eq.true&select=propietario_id"
             r = requests.get(url, headers=_headers(), timeout=8)
             data = r.json()
-            st.session_state["_debug_codigo"] = f"Status: {r.status_code} | Data: {data} | URL: {url}"
             if not data:
                 return None
             propietario_id = data[0]["propietario_id"]
-            # Leer inmuebles del propietario
+
+            # 2. Leer inmuebles del propietario directamente
             ri = requests.get(
-                f"{SUPA_URL}/rest/v1/inmuebles?user_id=eq.{propietario_id}&select=*",
+                f"{SUPA_URL}/rest/v1/inmuebles?user_id=eq.{propietario_id}&select=nombre,renta,renta_mercado,comunidad,cp,tipo,inquilino,valor_construccion,ibi_anual,seguro_anual&order=id.asc",
                 headers=_headers(), timeout=8
             )
             inmuebles = ri.json() if ri.status_code == 200 else []
-            # Leer nombre del propietario
-            ru = requests.get(
-                f"{SUPA_URL}/rest/v1/usuarios?user_id=eq.{propietario_id}&select=nombre,email",
+
+            # 3. Leer nombre y email desde accesos_asesor directamente
+            ra = requests.get(
+                f"{SUPA_URL}/rest/v1/accesos_asesor?codigo=eq.{codigo}&activo=eq.true&select=email,nombre",
                 headers=_headers(), timeout=8
             )
-            usuario = ru.json()
-            nombre = usuario[0].get("nombre", "Propietario") if usuario else "Propietario"
-            email  = usuario[0].get("email", "") if usuario else ""
-            return {"propietario_id": propietario_id, "nombre": nombre,
-                    "email": email, "inmuebles": inmuebles}
+            acceso_data = ra.json() if ra.status_code == 200 else []
+            if acceso_data and acceso_data[0].get("email"):
+                email  = acceso_data[0]["email"]
+                nombre = acceso_data[0].get("nombre") or email.split("@")[0].title()
+            else:
+                nombre = f"Propietario {propietario_id[:8]}"
+                email  = ""
+
+            return {
+                "propietario_id": propietario_id,
+                "nombre": nombre,
+                "email": email,
+                "inmuebles": inmuebles
+            }
         except Exception as e:
+            st.session_state["_debug_error"] = str(e)
             return None
 
     def safe_num(val, default=0.0):
