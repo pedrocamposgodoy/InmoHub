@@ -1074,7 +1074,7 @@ elif menu == "Clientes":
 
             # 2. Leer inmuebles del propietario directamente
             ri = requests.get(
-                f"{SUPA_URL}/rest/v1/inmuebles?user_id=eq.{propietario_id}&select=nombre,renta,renta_mercado,comunidad,cp,tipo,inquilino,valor_construccion,ibi_anual,seguro_anual&order=id.asc",
+                f"{SUPA_URL}/rest/v1/inmuebles?user_id=eq.{propietario_id}&select=nombre,renta,renta_mercado,comunidad,cp,tipo,inquilino,valor_construccion,ibi_anual,seguro_anual,fecha_inicio_contrato,fecha_vencimiento_contrato,tipo_arrendamiento&order=id.asc",
                 headers=_headers(), timeout=8
             )
             inmuebles = ri.json() if ri.status_code == 200 else []
@@ -1219,16 +1219,157 @@ elif menu == "Clientes":
             kpi_card(kc3, "Beneficio neto",     f"{beneficio:,.0f} €",    AMBER)
             kpi_card(kc4, "Rentabilidad media", f"{rent_media:.1f}%",     ACCENT)
 
+            # ── PANEL DE ALERTAS ──────────────────────────────────
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>🚨 Alertas Activas</div>", unsafe_allow_html=True)
+
+            from datetime import datetime as _dt, date as _date
+            alertas = []
+            for inm in inmuebles:
+                nombre_inm = inm.get("nombre", "—")
+                renta_act  = safe_num(inm.get("renta"))
+                renta_mkt  = safe_num(inm.get("renta_mercado"))
+                brecha_mes = renta_mkt - renta_act
+
+                # Alerta vencimiento contrato
+                fecha_venc_raw = inm.get("fecha_vencimiento_contrato")
+                if fecha_venc_raw and str(fecha_venc_raw) not in ["None","nan",""]:
+                    try:
+                        fecha_venc = _dt.strptime(str(fecha_venc_raw)[:10], "%Y-%m-%d").date()
+                        dias_restantes = (fecha_venc - _date.today()).days
+                        if dias_restantes < 0:
+                            alertas.append({"tipo": "🔴 URGENTE", "color": RED,
+                                "texto": f"{nombre_inm}: Contrato VENCIDO hace {abs(dias_restantes)} días",
+                                "accion": "Contactar propietario para renovación inmediata"})
+                        elif dias_restantes <= 30:
+                            alertas.append({"tipo": "🔴 CRÍTICO", "color": RED,
+                                "texto": f"{nombre_inm}: Contrato vence en {dias_restantes} días ({fecha_venc.strftime('%d/%m/%Y')})",
+                                "accion": "Ventana de acción inmediata — contactar ahora"})
+                        elif dias_restantes <= 60:
+                            alertas.append({"tipo": "🟡 ATENCIÓN", "color": AMBER,
+                                "texto": f"{nombre_inm}: Contrato vence en {dias_restantes} días ({fecha_venc.strftime('%d/%m/%Y')})",
+                                "accion": "Iniciar conversación sobre renovación"})
+                        elif dias_restantes <= 90:
+                            alertas.append({"tipo": "🟡 SEGUIMIENTO", "color": AMBER,
+                                "texto": f"{nombre_inm}: Contrato vence en {dias_restantes} días ({fecha_venc.strftime('%d/%m/%Y')})",
+                                "accion": "Planificar contacto próximo"})
+                    except:
+                        pass
+
+                # Alerta rentabilidad baja
+                if brecha_mes > 150:
+                    alertas.append({"tipo": "🔴 PÉRDIDA ALTA", "color": RED,
+                        "texto": f"{nombre_inm}: Renta {renta_act:,.0f}€ vs mercado {renta_mkt:,.0f}€ → pierde {brecha_mes*12:,.0f}€/año",
+                        "accion": "Proponer actualización de renta al vencimiento"})
+                elif brecha_mes > 50:
+                    alertas.append({"tipo": "🟡 PÉRDIDA MEDIA", "color": AMBER,
+                        "texto": f"{nombre_inm}: Renta por debajo de mercado → pierde {brecha_mes*12:,.0f}€/año",
+                        "accion": "Evaluar actualización IPC/IRAV"})
+
+                # Alerta sin inquilino
+                if not inm.get("inquilino") or str(inm.get("inquilino","")).strip() in ["","—","None"]:
+                    alertas.append({"tipo": "🔴 VACÍO", "color": RED,
+                        "texto": f"{nombre_inm}: Sin inquilino registrado",
+                        "accion": "Oportunidad de captación para alquiler"})
+
+            if alertas:
+                for alerta in alertas:
+                    st.markdown(f"""
+                    <div style='background:{CARD};border-left:4px solid {alerta["color"]};
+                        border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.5rem;'>
+                        <div style='display:flex;justify-content:space-between;align-items:center;'>
+                            <div>
+                                <span style='font-size:0.75rem;font-weight:700;color:{alerta["color"]};'>
+                                    {alerta["tipo"]}
+                                </span>
+                                <div style='font-size:0.85rem;color:#fff;margin-top:2px;'>
+                                    {alerta["texto"]}
+                                </div>
+                                <div style='font-size:0.75rem;color:{TEXT2};margin-top:2px;'>
+                                    💡 {alerta["accion"]}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style='background:{CARD};border:1px solid {BORDER};border-radius:8px;
+                    padding:1rem;text-align:center;color:{TEXT2};font-size:0.85rem;'>
+                    ✅ Sin alertas activas — patrimonio en buen estado
+                </div>
+                """, unsafe_allow_html=True)
+
+            # ── ESTADO DE CONTRATOS ───────────────────────────────
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>📅 Estado de Contratos</div>", unsafe_allow_html=True)
+
+            contratos_html = ""
+            for inm in inmuebles:
+                nombre_inm = inm.get("nombre","—")
+                fecha_venc_raw = inm.get("fecha_vencimiento_contrato")
+                tipo_arr = inm.get("tipo_arrendamiento", "—")
+                inquilino = inm.get("inquilino","Sin inquilino")
+
+                dias_txt = "—"
+                color_dias = TEXT2
+                semaforo = "⚪"
+                try:
+                    if fecha_venc_raw and str(fecha_venc_raw) not in ["None","nan",""]:
+                        fecha_venc = _dt.strptime(str(fecha_venc_raw)[:10], "%Y-%m-%d").date()
+                        dias = (fecha_venc - _date.today()).days
+                        if dias < 0:
+                            dias_txt = f"Vencido hace {abs(dias)}d"
+                            color_dias = RED
+                            semaforo = "🔴"
+                        elif dias <= 30:
+                            dias_txt = f"{dias} días"
+                            color_dias = RED
+                            semaforo = "🔴"
+                        elif dias <= 90:
+                            dias_txt = f"{dias} días"
+                            color_dias = AMBER
+                            semaforo = "🟡"
+                        else:
+                            dias_txt = f"{dias} días"
+                            color_dias = ACCENT
+                            semaforo = "🟢"
+                except:
+                    dias_txt = "Sin fecha"
+
+                contratos_html += f"""
+                <div style='display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr;
+                    gap:0.5rem;background:{CARD};border:1px solid {BORDER};
+                    border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.4rem;
+                    align-items:center;'>
+                    <div style='font-weight:700;color:#fff;font-size:0.85rem;'>{semaforo} {nombre_inm}</div>
+                    <div style='font-size:0.8rem;color:{TEXT2};'>{inquilino}</div>
+                    <div style='font-size:0.8rem;color:{TEXT2};'>{tipo_arr}</div>
+                    <div style='font-weight:700;color:{color_dias};font-size:0.8rem;'>{dias_txt}</div>
+                </div>"""
+
+            # Header tabla
+            st.markdown(f"""
+            <div style='display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr;
+                gap:0.5rem;padding:0.4rem 1rem;margin-bottom:0.2rem;'>
+                <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Inmueble</div>
+                <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Inquilino</div>
+                <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Tipo</div>
+                <div style='font-size:0.7rem;color:{TEXT2};text-transform:uppercase;'>Vencimiento</div>
+            </div>
+            {contratos_html}
+            """, unsafe_allow_html=True)
+
             # ── FICHAS INMUEBLES (solo lectura) ──────────────────
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>🏠 Fichas de Inmuebles</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-weight:700;font-size:1rem;color:#fff;margin-bottom:0.75rem;'>🏠 Fichas de Rentabilidad</div>", unsafe_allow_html=True)
 
             for inm in inmuebles:
                 renta_actual = safe_num(inm.get("renta"))
                 renta_mercado = safe_num(inm.get("renta_mercado"))
                 brecha = renta_mercado - renta_actual
                 brecha_anual = brecha * 12
-                color_brecha = RED if brecha > 100 else (AMBER if brecha > 0 else ACCENT)
+                color_brecha = RED if brecha > 100 else (AMBER if brecha > 50 else ACCENT)
                 rent_bruta = (renta_actual * 12 / safe_num(inm.get("valor_construccion"), 1) * 100) if safe_num(inm.get("valor_construccion")) > 0 else 0
 
                 st.markdown(f"""
